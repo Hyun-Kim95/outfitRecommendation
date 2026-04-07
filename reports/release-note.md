@@ -36,7 +36,8 @@ npm run dev
 
 ## 품질 게이트
 
-- 검증 절차·PARTIAL 요약: [reports/test-report.md](test-report.md)
+- 검증 절차·PARTIAL 요약: [reports/test-report.md](test-report.md) (§14~§17 UI/UX·재현)
 - 리뷰·블로커: [reports/review.md](review.md)
-- 체크리스트: [docs/gate-checklist.md](../docs/gate-checklist.md) — Required 중 E2E·검증/에러, UI/UX 중 런타임 3항은 수동 증거 후 체크
-- 모바일 앱 표시 이름: `mobile/app.json`의 `expo.name`을 **착장 기록**으로 설정(워크플로 UI 게이트 정적 검토 반영)
+- 체크리스트: [docs/gate-checklist.md](../docs/gate-checklist.md) — **필수** 중 E2E·validation/에러 런타임 2항, **UI/UX** 중 상태·피드백·액션 후 흐름 3항은 수동 증거 후 체크
+- 워크플로: [.cursor/rules/00-workflow.mdc](../.cursor/rules/00-workflow.mdc) (테스트 → 리뷰 → 재테스트 → 게이트 → 문서화)
+- 모바일 앱 표시 이름: `mobile/app.json`의 `expo.name` **착장 기록**

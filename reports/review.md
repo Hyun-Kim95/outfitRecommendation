@@ -1,46 +1,40 @@
 # Review
 
-**기준**: [.cursor/rules/00-workflow.mdc](../.cursor/rules/00-workflow.mdc), [.cursor/agents/review-agent.md](../.cursor/agents/review-agent.md) (UX 범주 포함)  
-**검토일**: 2026-04-07 (워크플로·게이트 체크리스트 갱신 반영)
+**기준**: [.cursor/rules/00-workflow.mdc](../.cursor/rules/00-workflow.mdc), [.cursor/agents/review-agent.md](../.cursor/agents/review-agent.md)  
+**검토일**: 2026-04-08 (`.md`/`.mdc` 워크플로·게이트·테스터 정의 갱신 반영, 빌드 재실행)
 
-## 1. Build / test status
-- **Blocker 아님**: `mobile` — `npm run typecheck` exit 0 (이번 세션 재실행).
-- **Blocker 아님**: `admin` — `npm run build` exit 0 (재실행).
-- **가입 API 스모크**: [reports/test-report.md](test-report.md)와 동일 — rate limit으로 신규 가입 단계만 실패 가능, 앱 결함으로 단정 불가.
+## 1. 빌드 / 테스트 상태
+- **Blocker 아님**: `mobile` — `npm run typecheck` exit 0.
+- **Blocker 아님**: `admin` — `npm run build` exit 0.
+- **범위**: 이번 변경은 주로 `.cursor` 규칙·에이전트, `docs/gate-checklist.md`, `reports/test-report.md` 템플릿 정비. 앱 소스 미변경 시 동작 회귀는 빌드로만 간접 확인.
 
 ## 2. 기능·요구사항
-- PRD / frontend-plan / ui-spec과 구현 방향 일치. 관리자 읽기 MVP·모바일 P0 범위 유지.
+- 문서만 갱신된 경우 구현-PRD 불일치 **신규 이슈 없음**. 앱 기능 변경이 포함된 커밋이면 별도로 PRD/계획과 diff 대조 필요.
 
 ## 3. API / 스키마
-- Supabase anon + RLS, `profiles.is_admin` — [docs/backend-plan.md](../docs/backend-plan.md)와 정합.
+- 변경 없음(코드 미수정 전제). 기존 Supabase RLS·`is_admin` 설계 유지.
 
-## 4. 검증·에러 처리
-- 폼·`Alert`로 실패/success 피드백 존재 (grep 기준: 로그인/가입/착장/감상/설정 등).
-- **Non-blocker**: 인증 화면에서 `error.message`를 그대로 노출하는 경우가 있음 ([`sign-in.tsx`](../mobile/app/(auth)/sign-in.tsx), [`sign-up.tsx`](../mobile/app/(auth)/sign-up.tsx)). 사용자 친화 문구로 매핑하면 [10-coding-standards.mdc](../.cursor/rules/10-coding-standards.mdc) UI/UX 기준에 더 잘 맞음.
+## 4. validation / 에러 처리
+- 인증: [mobile/lib/auth-errors.ts](../mobile/lib/auth-errors.ts)에서 **429·rate limit** 등에 한국어 안내 매핑.
+- **Non-blocker**: 그 외 Supabase `AuthError.message`가 그대로 `Alert`에 나갈 수 있음 — 필요 시 메시지 사전 확장.
 
 ## 5. 보안
-- 서비스 롤 미노출, RLS·관리자 정책 — 이전과 동일. Blocker 없음.
+- `.gitignore`의 `**/.env` 등으로 비밀값 미커밋 전제 유지. Blocker 없음.
 
 ## 6. 유지보수
-- `test-report.md`에 E2E·UX 검증 구분 명시 권장 (이번 [§16](test-report.md) 추가).
+- 워크플로(00-workflow.mdc)에 **테스트 → 리뷰 → blocker 수정 → 재테스트 → 게이트 → 문서화** 순서가 명시됨 — [reports/test-report.md](test-report.md) §14~17과 [docs/gate-checklist.md](../docs/gate-checklist.md)를 함께 갱신하는 것이 좋음.
 
-## 7. UX 일관성·메시지 (review-agent 신규 범주)
-- **앱 표시 이름**: [mobile/app.json](../mobile/app.json) `expo.name`을 `착장 기록`으로 조정 — 홈 화면/스플래시 맥락과 정합(이전 `mobile` 제네릭 명칭 개선).
-- **관리자 웹**: [admin/index.html](../admin/index.html) `<title>착장 앱 · 관리자</title>` — 문맥 적절.
-- **로딩/빈 상태**: 홈·히스토리 등에 로딩/빈 문구 존재. 실제 기기에서 가독성만 확인하면 됨.
-- **원문 기술 오류**: 위 §4 non-blocker 참고.
-
-## 8. Page title / 화면 맥락
-- 관리자: HTML title 적절.
-- 모바일: Expo Router 헤더·탭 라벨 한국어 위주. 네이티브 앱 이름은 `app.json` 반영.
+## 7. UX 일관성·문구·상태
+- 테스터 에이전트가 인증 시나리오·미검증 명시를 강화함 — 리포트 PARTIAL과 정합.
+- 실기기에서 얼럿 문구·빈/로딩 상태는 [test-report.md §16](test-report.md)에 따라 **수동 확인 권장**.
 
 ## Blocker vs non-blocker
 
 | 구분 | 내용 |
 |------|------|
-| **Blocker** | 없음 |
-| **Non-blocker** | Auth `error.message` 직노출, E2E·rate limit 한계(test-report 참고) |
+| **Blocker** | 없음(문서·빌드 검증 범위 내) |
+| **Non-blocker** | E2E·rate limit, 일반 Auth 메시지 원문 노출 가능성 |
 
 ## 결론
-- **reports/review.md에 blocker 없음** — 게이트의 “No blocker” 항목 충족 가능.
-- UI/UX 게이트 완전 충족은 **실기기에서의 확인**과 함께 [docs/gate-checklist.md](../docs/gate-checklist.md) UI 섹션을 최종 체크하는 것을 권장.
+- **reports/review.md에 blocker 없음** — 게이트의 “review에 blocker 없음” 항목과 호환.
+- 주요 사용자 흐름·UI/UX 게이트 **완전 이행**은 [reports/test-report.md §9·§16](test-report.md) 및 [docs/gate-checklist.md](../docs/gate-checklist.md)의 미체크 항목 해소 후로 보면 됨.

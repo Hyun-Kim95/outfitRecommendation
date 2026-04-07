@@ -1,64 +1,64 @@
 ---
-description: Enforce multi-agent workflow for this project
+description: Enforce structured multi-agent delivery workflow
 alwaysApply: true
 ---
 
-You are working in a structured multi-agent delivery workflow.
+당신은 구조화된 멀티 에이전트 전달 워크플로 안에서 작업하고 있습니다.
 
-Follow this exact order unless the user explicitly overrides it:
+사용자가 명시적으로 순서를 바꾸지 않는 한, 반드시 아래 순서를 따르세요.
 
-1. Research
-2. PRD
-3. Frontend/Backend planning
-4. UI specification
-5. Build
-6. Test
-7. Review
-8. Fix if blockers exist
-9. Re-test after blocker fixes
-10. Gate check
-11. Documentation
+1. 리서치
+2. PRD 작성
+3. 프론트엔드/백엔드 계획
+4. UI 명세
+5. 구현
+6. 테스트
+7. 리뷰
+8. blocker가 있으면 수정
+9. blocker 수정 후 재테스트
+10. 게이트 체크
+11. 문서화
 
-Operating rules:
+운영 규칙:
 
-- Do not start implementation before a written plan exists.
-- If docs/prd.md does not exist, create or update it first.
-- If docs/frontend-plan.md or docs/backend-plan.md do not exist, create them before coding.
-- If the task affects UI, update docs/ui-spec.md before implementing.
-- Before making major edits, explain the plan briefly in chat.
-- After implementation, run tester-agent and write findings to reports/test-report.md.
-- After testing, run review-agent and write findings to reports/review.md.
-- If blockers are found, fix only blockers first.
-- After blocker fixes, re-run relevant tests and update reports/test-report.md and reports/review.md.
-- Before declaring completion, verify the gate checklist in docs/gate-checklist.md.
-- Update documentation artifacts at the end.
+- 문서화된 계획이 없으면 구현을 시작하지 마세요.
+- docs/prd.md가 없으면 먼저 생성하거나 업데이트하세요.
+- docs/frontend-plan.md 또는 docs/backend-plan.md가 없으면 코딩 전에 먼저 작성하세요.
+- 작업이 UI에 영향을 주면 구현 전에 docs/ui-spec.md를 업데이트하세요.
+- 큰 수정 전에 채팅에서 계획을 짧게 설명하세요.
+- 구현 후 tester-agent를 실행하고 결과를 reports/test-report.md에 기록하세요.
+- 테스트 후 review-agent를 실행하고 결과를 reports/review.md에 기록하세요.
+- blocker가 발견되면 blocker만 먼저 수정하세요.
+- blocker 수정 후 관련 테스트를 다시 실행하고 reports/test-report.md와 reports/review.md를 업데이트하세요.
+- 완료 선언 전에 docs/gate-checklist.md를 기준으로 게이트를 확인하세요.
+- 마지막에 문서 산출물을 업데이트하세요.
 
-UX/UI workflow rules:
+UI/UX 워크플로 규칙:
 
-- If the task affects UI or user interaction, verify UX details before gate check.
-- UX verification must include labels, page title, alerts/toasts, validation feedback, empty states, loading states, error states, and post-action navigation behavior.
-- Do not consider UI work complete if the feature works technically but produces confusing or inconsistent user experience.
+- 작업이 UI 또는 사용자 인터랙션에 영향을 주는 경우, 게이트 체크 전에 UX 세부 사항을 검증하세요.
+- UX 검증에는 라벨, 페이지 제목, 얼럿/토스트, validation 피드백, 빈 상태, 로딩 상태, 에러 상태, 액션 이후 이동/피드백 흐름이 반드시 포함되어야 합니다.
+- 기능이 기술적으로 동작하더라도 사용자 경험이 혼란스럽거나 일관되지 않다면 UI 작업이 완료된 것으로 간주하지 마세요.
 
-Definition of blocker:
-- build failure
-- test failure
-- broken main user flow
-- schema/API mismatch
-- security-sensitive issue
-- destructive change without rollback path
+blocker 정의:
+- 빌드 실패
+- 테스트 실패
+- 주요 사용자 흐름 깨짐
+- 스키마/API 불일치
+- 보안 민감 이슈
+- 롤백 경로 없는 파괴적 변경
 
-If blocker exists:
-- stop feature expansion
-- fix blocker only
-- re-run relevant checks
-- do not proceed to gate until blocker status is cleared or explicitly accepted by the user
+blocker가 존재하면:
+- 기능 확장을 중단하세요
+- blocker만 수정하세요
+- 관련 검증을 다시 실행하세요
+- blocker 상태가 해소되거나 사용자가 명시적으로 수용하기 전에는 게이트로 진행하지 마세요
 
-Output discipline:
-- Research findings -> docs/research.md
-- Product requirements -> docs/prd.md
-- Frontend plan -> docs/frontend-plan.md
-- Backend plan -> docs/backend-plan.md
-- UI spec -> docs/ui-spec.md
-- Test result -> reports/test-report.md
-- Review result -> reports/review.md
-- Release/doc summary -> reports/release-note.md
+산출물 규칙:
+- 리서치 결과 -> docs/research.md
+- 요구사항 문서 -> docs/prd.md
+- 프론트엔드 계획 -> docs/frontend-plan.md
+- 백엔드 계획 -> docs/backend-plan.md
+- UI 명세 -> docs/ui-spec.md
+- 테스트 결과 -> reports/test-report.md
+- 리뷰 결과 -> reports/review.md
+- 릴리즈/문서 요약 -> reports/release-note.md
