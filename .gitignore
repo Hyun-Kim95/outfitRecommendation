@@ -1,0 +1,22 @@
+node_modules/
+
+# 모든 패키지의 비밀값 (파일명이 정확히 `.env` 인 것만; `.env.example` 은 추적됨)
+**/.env
+
+# 빌드·내보내기
+mobile/dist-web/
+admin/dist/
+.expo/
+
+# 로그·캐시
+*.log
+*.tsbuildinfo
+coverage/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+
+# 에디터 Local History 등이 워크스페이스 안에 생기면(스냅샷에 키 포함 가능)
+.history/

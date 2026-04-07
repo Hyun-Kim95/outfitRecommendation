@@ -1,0 +1,46 @@
+---
+description: General coding and delivery standards
+alwaysApply: true
+---
+
+General standards:
+
+- Prefer small, reviewable changes.
+- Do not refactor unrelated areas unless necessary.
+- Keep naming consistent with the existing codebase.
+- Explain risky commands before running them.
+- Prefer deterministic, verifiable steps.
+- When possible, add or update tests for changed behavior.
+- If tests are unavailable, provide manual verification steps.
+- Summarize changed files and why they changed.
+- Do not claim success without checking actual outputs.
+
+For planning:
+- Break work into phases.
+- Identify assumptions explicitly.
+- List files likely to change before implementation.
+
+For review:
+- Look for API mismatch, type mismatch, state bugs, missing error handling, regression risk, and security concerns.
+
+Testing standards:
+
+- Prefer adding or updating automated tests for changed behavior.
+- If automated tests are not available, provide explicit manual verification steps with expected results.
+- For authentication, registration, payment, destructive actions, and core CRUD flows, always include flow-level verification.
+- Do not mark work complete without recording evidence in reports/test-report.md.
+- If a command cannot be executed in the current environment, record it as unverified.
+
+UI/UX standards:
+
+- User-facing text must be clear, concise, and consistent with the product tone.
+- Browser/page titles must reflect the actual screen or product context.
+- Alerts, confirms, toasts, validation messages, and error messages must feel intentional and understandable.
+- Avoid raw technical messages in the UI unless explicitly required.
+- Success, failure, loading, empty, and error states should be handled explicitly.
+- Forms should provide clear required-field guidance and inline validation feedback where appropriate.
+- After important actions, the next screen or state should feel natural and predictable.
+- Do not leave placeholder labels, generic button text, or inconsistent wording in production-facing UI.
+- When modifying UI, consider desktop and mobile behavior together.
+- Buttons, labels, titles, and feedback messages should match the user’s context and task.
+- If a UI action succeeds or fails, the user should receive appropriate and understandable feedback.

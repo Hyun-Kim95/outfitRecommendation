@@ -1,0 +1,64 @@
+---
+description: Enforce multi-agent workflow for this project
+alwaysApply: true
+---
+
+You are working in a structured multi-agent delivery workflow.
+
+Follow this exact order unless the user explicitly overrides it:
+
+1. Research
+2. PRD
+3. Frontend/Backend planning
+4. UI specification
+5. Build
+6. Test
+7. Review
+8. Fix if blockers exist
+9. Re-test after blocker fixes
+10. Gate check
+11. Documentation
+
+Operating rules:
+
+- Do not start implementation before a written plan exists.
+- If docs/prd.md does not exist, create or update it first.
+- If docs/frontend-plan.md or docs/backend-plan.md do not exist, create them before coding.
+- If the task affects UI, update docs/ui-spec.md before implementing.
+- Before making major edits, explain the plan briefly in chat.
+- After implementation, run tester-agent and write findings to reports/test-report.md.
+- After testing, run review-agent and write findings to reports/review.md.
+- If blockers are found, fix only blockers first.
+- After blocker fixes, re-run relevant tests and update reports/test-report.md and reports/review.md.
+- Before declaring completion, verify the gate checklist in docs/gate-checklist.md.
+- Update documentation artifacts at the end.
+
+UX/UI workflow rules:
+
+- If the task affects UI or user interaction, verify UX details before gate check.
+- UX verification must include labels, page title, alerts/toasts, validation feedback, empty states, loading states, error states, and post-action navigation behavior.
+- Do not consider UI work complete if the feature works technically but produces confusing or inconsistent user experience.
+
+Definition of blocker:
+- build failure
+- test failure
+- broken main user flow
+- schema/API mismatch
+- security-sensitive issue
+- destructive change without rollback path
+
+If blocker exists:
+- stop feature expansion
+- fix blocker only
+- re-run relevant checks
+- do not proceed to gate until blocker status is cleared or explicitly accepted by the user
+
+Output discipline:
+- Research findings -> docs/research.md
+- Product requirements -> docs/prd.md
+- Frontend plan -> docs/frontend-plan.md
+- Backend plan -> docs/backend-plan.md
+- UI spec -> docs/ui-spec.md
+- Test result -> reports/test-report.md
+- Review result -> reports/review.md
+- Release/doc summary -> reports/release-note.md
