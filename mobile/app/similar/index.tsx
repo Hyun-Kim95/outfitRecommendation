@@ -1,12 +1,19 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { dateInSeoul } from '@/lib/dates';
+import { effectiveOutfitSatisfaction } from '@/lib/feedbackSatisfaction';
 import { fetchOutfitsWithRelations } from '@/lib/queries';
 import { sortOutfits, type SimilarSort, type TodayVector } from '@/lib/similarDays';
+import {
+  activityLevelFromTransports,
+  getDefaultTransportsFromProfile,
+  getPrimaryCoords,
+} from '@/lib/profileCompat';
+import type { ThemeColors } from '@/lib/theme-colors';
 import { fetchOpenMeteoSnapshot } from '@/lib/weather';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
-import * as Location from 'expo-location';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -16,8 +23,50 @@ import {
   View,
 } from 'react-native';
 
+function createStyles(c: ThemeColors) {
+  return StyleSheet.create({
+    scroll: { padding: 16, paddingBottom: 40, backgroundColor: c.background },
+    sub: { color: c.mutedForeground, marginBottom: 12, lineHeight: 20 },
+    card: {
+      backgroundColor: c.card,
+      padding: 14,
+      borderRadius: 12,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    cardTitle: { fontWeight: '700', marginBottom: 6, color: c.foreground },
+    cardBody: { color: c.foreground },
+    seg: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+    segBtn: {
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      backgroundColor: c.chipBg,
+    },
+    segBtnOn: { backgroundColor: c.chipOnBg },
+    segTxt: { fontSize: 13, color: c.chipText },
+    segTxtOn: { color: c.chipTextOn, fontWeight: '700' },
+    empty: { textAlign: 'center', color: c.mutedForeground, marginTop: 24 },
+    row: {
+      backgroundColor: c.card,
+      padding: 14,
+      borderRadius: 12,
+      marginBottom: 10,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    warn: { color: c.warning, fontSize: 12, fontWeight: '600', marginBottom: 4 },
+    date: { fontWeight: '700', color: c.foreground },
+    sum: { marginTop: 4, color: c.foreground },
+    meta: { marginTop: 6, fontSize: 12, color: c.mutedForeground },
+  });
+}
+
 export default function SimilarDaysScreen() {
   const { user, profile } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [sort, setSort] = useState<SimilarSort>('similarity');
   const [loading, setLoading] = useState(true);
   const [vec, setVec] = useState<TodayVector | null>(null);
@@ -27,17 +76,8 @@ export default function SimilarDaysScreen() {
     if (!user) return;
     setLoading(true);
     try {
-      let lat = profile?.default_lat ?? 37.5665;
-      let lng = profile?.default_lng ?? 126.978;
-
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        const pos = await Location.getCurrentPositionAsync({});
-        lat = pos.coords.latitude;
-        lng = pos.coords.longitude;
-      }
-
-      const snap = await fetchOpenMeteoSnapshot(lat, lng);
+      const { lat, lng, label } = getPrimaryCoords(profile);
+      const snap = await fetchOpenMeteoSnapshot(lat, lng, label);
       const today = dateInSeoul();
       const v: TodayVector = {
         temperature_current: snap.temperature_current,
@@ -46,7 +86,7 @@ export default function SimilarDaysScreen() {
         wind_speed: snap.wind_speed,
         precipMatch: snap.precipitation_probability > 30,
         situationTags: [],
-        activityLevel: '보통',
+        activityLevel: activityLevelFromTransports(getDefaultTransportsFromProfile(profile)),
         indoorOutdoor: '균형',
       };
       setVec(v);
@@ -72,13 +112,14 @@ export default function SimilarDaysScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll}>
       <Text style={styles.sub}>
-        오늘(서울 기준일)과 비슷한 날씨·상황의 과거 착장입니다. 정렬을 바꿔 다시 불러옵니다.
+        오늘과 비슷한 날씨·상황의 과거 착장입니다. 착장 저장 시 남긴 날씨 스냅샷이 있으면 유사도에
+        반영됩니다. 정렬을 바꿔 다시 불러옵니다.
       </Text>
 
       {vec ? (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>오늘 요약</Text>
-          <Text>
+          <Text style={styles.cardBody}>
             기온 {Math.round(vec.temperature_current)}° · 체감 {Math.round(vec.temperature_feels_like)}° ·
             습도 {Math.round(vec.humidity)}% · 바람 {vec.wind_speed.toFixed(1)}m/s
           </Text>
@@ -103,62 +144,31 @@ export default function SimilarDaysScreen() {
         ))}
       </View>
 
-      {loading ? <ActivityIndicator color="#0d9488" style={{ marginTop: 24 }} /> : null}
+      {loading ? <ActivityIndicator color={colors.activityIndicator} style={{ marginTop: 24 }} /> : null}
 
       {!loading && rows.length === 0 ? (
         <Text style={styles.empty}>비교할 과거 기록이 없습니다. 먼저 며칠 기록해 보세요.</Text>
       ) : null}
 
-      {rows.slice(0, 20).map(({ item, similarity, score, warning }) => (
-        <Pressable key={item.id} style={styles.row} onPress={() => router.push(`/outfit/${item.id}`)}>
-          {warning ? <Text style={styles.warn}>저만족 이력</Text> : null}
-          <Text style={styles.date}>{item.worn_on}</Text>
-          <Text style={styles.sum}>
-            {[item.top_category, item.bottom_category, item.outer_category].filter(Boolean).join(' · ')}
-          </Text>
-          <Text style={styles.meta}>
-            유사 {(similarity * 100).toFixed(0)}% · 추천점수 {score.toFixed(2)} · 만족도{' '}
-            {item.rating_logs?.overall_rating ?? '—'}
-          </Text>
-        </Pressable>
-      ))}
+      {rows.slice(0, 20).map(({ item, similarity, score, warning }) => {
+        const sat = effectiveOutfitSatisfaction(
+          item.feedback_logs,
+          item.rating_logs?.overall_rating ?? null
+        );
+        const satLabel = sat != null ? (sat % 1 === 0 ? String(sat) : sat.toFixed(1)) : '—';
+        return (
+          <Pressable key={item.id} style={styles.row} onPress={() => router.push(`/outfit/${item.id}`)}>
+            {warning ? <Text style={styles.warn}>저만족 이력</Text> : null}
+            <Text style={styles.date}>{item.worn_on}</Text>
+            <Text style={styles.sum}>
+              {[item.top_category, item.bottom_category, item.outer_category].filter(Boolean).join(' · ')}
+            </Text>
+            <Text style={styles.meta}>
+              유사 {(similarity * 100).toFixed(0)}% · 추천점수 {score.toFixed(2)} · 만족도 {satLabel}
+            </Text>
+          </Pressable>
+        );
+      })}
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  scroll: { padding: 16, paddingBottom: 40 },
-  sub: { color: '#52525b', marginBottom: 12, lineHeight: 20 },
-  card: {
-    backgroundColor: '#fff',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e4e4e7',
-  },
-  cardTitle: { fontWeight: '700', marginBottom: 6 },
-  seg: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  segBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#e4e4e7',
-  },
-  segBtnOn: { backgroundColor: '#99f6e4' },
-  segTxt: { fontSize: 13, color: '#444' },
-  segTxtOn: { color: '#0f766e', fontWeight: '700' },
-  empty: { textAlign: 'center', color: '#71717a', marginTop: 24 },
-  row: {
-    backgroundColor: '#fff',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#e4e4e7',
-  },
-  warn: { color: '#b45309', fontSize: 12, fontWeight: '600', marginBottom: 4 },
-  date: { fontWeight: '700' },
-  sum: { marginTop: 4, color: '#333' },
-  meta: { marginTop: 6, fontSize: 12, color: '#71717a' },
-});

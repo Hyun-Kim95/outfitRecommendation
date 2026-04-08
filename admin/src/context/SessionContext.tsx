@@ -1,5 +1,5 @@
 import { getSupabase, supabaseConfigured } from '@/lib/supabase';
-import type { Session, User } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import {
   createContext,
   useCallback,
@@ -10,10 +10,16 @@ import {
   type ReactNode,
 } from 'react';
 
+/** 이 이벤트들은 세션 토큰만 바뀌거나 초기 리스너 등록 시 중복이 나와 프로필을 다시 불러올 필요 없음 */
+function shouldReloadProfileOnAuthEvent(event: AuthChangeEvent): boolean {
+  return event !== 'INITIAL_SESSION' && event !== 'TOKEN_REFRESHED';
+}
+
 export type AdminProfile = {
   id: string;
   nickname: string | null;
   is_admin: boolean;
+  account_disabled?: boolean;
   created_at: string;
   default_region: string | null;
 };
@@ -76,10 +82,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (mounted) setReady(true);
     })();
 
-    const { data: sub } = sb.auth.onAuthStateChange((_e, s) => {
+    const { data: sub } = sb.auth.onAuthStateChange((event, s) => {
       setSession(s);
-      if (s?.user) void loadProfile(s.user.id);
-      else setProfile(null);
+      if (!s?.user) {
+        setProfile(null);
+        return;
+      }
+      if (shouldReloadProfileOnAuthEvent(event)) {
+        void loadProfile(s.user.id);
+      }
     });
     return () => {
       mounted = false;

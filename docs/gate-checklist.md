@@ -6,14 +6,14 @@
 ## 필수 항목
 - [x] PRD가 존재하고 실제 구현 범위와 일치한다 — [docs/prd.md](prd.md) 존재(정적); 최신 기능 커밋 시 재대조
 - [x] 프론트엔드/백엔드 계획 문서가 존재한다 — [frontend-plan.md](frontend-plan.md), [backend-plan.md](backend-plan.md)
-- [x] UI 변경이 있었다면 UI 명세가 업데이트되었다 — [ui-spec.md](ui-spec.md) 존재; **이번 변경은 문서·워크플로만이면 UI 변경 없음**
+- [x] UI 변경이 있었다면 UI 명세가 업데이트되었다 — [ui-spec.md](ui-spec.md); 관리자 고도화·모바일 문의 반영됨(2026-04-08)
 - [x] 빌드가 통과한다 — `mobile` typecheck, `admin` build (2026-04-08)
 - [x] reports/test-report.md가 존재하고 최신 상태다
 - [x] 관련 자동 테스트가 통과했거나, 명시적인 수동 검증 절차 및 결과가 기록되어 있다 — 자동 단위 테스트 없음 → PARTIAL·수동 절차·명령 결과 기록됨
 - [ ] 주요 사용자 흐름이 end-to-end로 동작한다 — test-report §9 미검증
 - [ ] validation 및 에러 처리가 검증되었다 — 런타임 전수 미검증(§10)
 - [x] reports/review.md에 blocker가 남아 있지 않다
-- [x] API/스키마 변경 사항이 문서화되었다 — 마이그레이션·backend-plan (코드 변경 없는 커밋이면 해당 없음)
+- [x] API/스키마 변경 사항이 문서화되었다 — [backend-plan.md](backend-plan.md), `supabase/migrations/20260408210000_admin_inquiries_notices_account_disabled.sql`
 - [x] 릴리즈 요약이 업데이트되었다 — [reports/release-note.md](../reports/release-note.md)
 
 ## UI / UX 품질

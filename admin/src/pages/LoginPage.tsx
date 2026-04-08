@@ -1,10 +1,12 @@
 import { useSession } from '@/context/SessionContext';
+import { useTheme } from '@/context/ThemeContext';
 import { getSupabase } from '@/lib/supabase';
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 export function LoginPage() {
   const { ready, configured, session, profile, profileLoading, signIn } = useSession();
+  const { preference, setPreference } = useTheme();
   const loc = useLocation();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -56,6 +58,25 @@ export function LoginPage() {
 
   return (
     <div className="card narrow">
+      <div className="theme-picker login-theme">
+        <span className="muted small">테마</span>
+        <div className="theme-segments">
+          <button
+            type="button"
+            className={`theme-chip${preference === 'light' ? ' active' : ''}`}
+            onClick={() => setPreference('light')}
+          >
+            라이트
+          </button>
+          <button
+            type="button"
+            className={`theme-chip${preference === 'dark' ? ' active' : ''}`}
+            onClick={() => setPreference('dark')}
+          >
+            다크
+          </button>
+        </div>
+      </div>
       <h1>관리자 로그인</h1>
       <p className="muted small">관리자로 지정된 계정만 대시보드에 접근할 수 있습니다.</p>
       <form onSubmit={onSubmit} className="form">

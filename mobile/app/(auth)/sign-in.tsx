@@ -1,7 +1,9 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { userFacingAuthMessage } from '@/lib/auth-errors';
+import type { ThemeColors } from '@/lib/theme-colors';
 import { Link, router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -13,8 +15,38 @@ import {
   View,
 } from 'react-native';
 
+function createStyles(c: ThemeColors) {
+  return StyleSheet.create({
+    container: { flex: 1, padding: 24, justifyContent: 'center', backgroundColor: c.background },
+    title: { fontSize: 24, fontWeight: '700', marginBottom: 24, color: c.foreground },
+    input: {
+      borderWidth: 1,
+      borderColor: c.inputBorder,
+      borderRadius: 10,
+      padding: 14,
+      marginBottom: 12,
+      backgroundColor: c.inputBg,
+      color: c.foreground,
+      fontSize: 16,
+    },
+    button: {
+      backgroundColor: c.primary,
+      padding: 16,
+      borderRadius: 10,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    buttonDisabled: { opacity: 0.6 },
+    buttonText: { color: c.primaryForeground, fontWeight: '600', fontSize: 16 },
+    linkWrap: { marginTop: 20, alignItems: 'center' },
+    link: { color: c.primary, fontSize: 15 },
+  });
+}
+
 export default function SignInScreen() {
   const { signIn } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -39,6 +71,7 @@ export default function SignInScreen() {
       <TextInput
         style={styles.input}
         placeholder="이메일"
+        placeholderTextColor={colors.mutedForeground}
         autoCapitalize="none"
         keyboardType="email-address"
         value={email}
@@ -47,6 +80,7 @@ export default function SignInScreen() {
       <TextInput
         style={styles.input}
         placeholder="비밀번호"
+        placeholderTextColor={colors.mutedForeground}
         secureTextEntry
         value={password}
         onChangeText={setPassword}
@@ -66,28 +100,3 @@ export default function SignInScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, justifyContent: 'center', backgroundColor: '#fafafa' },
-  title: { fontSize: 24, fontWeight: '700', marginBottom: 24, color: '#111' },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
-    backgroundColor: '#fff',
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: '#0d9488',
-    padding: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
-  linkWrap: { marginTop: 20, alignItems: 'center' },
-  link: { color: '#0d9488', fontSize: 15 },
-});

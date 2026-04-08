@@ -22,7 +22,8 @@
 | commute_student | boolean | nullable, 온보딩 |
 | notifications_enabled | boolean | default false |
 | onboarding_completed | boolean | default false |
-| is_admin | boolean | default **false** — 관리자 콘솔 접근 플래그 |
+| is_admin | boolean | default **false** — 관리자 콘솔 접근 플래그(API로 변경 불가) |
+| account_disabled | boolean | default **false** — true면 앱 이용 제한; 본인 UPDATE 불가, 관리자만 타인 행 변경 |
 | created_at, updated_at | timestamptz | |
 
 ### `weather_logs`
@@ -93,12 +94,36 @@ PRD 8.2와 동일한 의미. MVP 컬럼: `user_id`, `date` (date), `region_name`
 | selected_outfit_log_id (nullable) |
 | created_at |
 
+### `support_tickets` (1:1 문의)
+
+| 컬럼 | 타입 |
+|------|------|
+| id | uuid PK |
+| user_id | uuid FK → profiles |
+| subject, body | text |
+| status | `open` / `in_progress` / `answered` / `closed` |
+| admin_reply | text nullable |
+| created_at, updated_at | timestamptz |
+
+### `app_notices` (공지)
+
+| 컬럼 | 타입 |
+|------|------|
+| id | uuid PK |
+| title, body | text |
+| is_active | boolean |
+| starts_at, ends_at | timestamptz (`ends_at` null이면 종료일 없음) |
+| sort_order | int |
+| created_at, updated_at | timestamptz |
+
 ## RLS 정책 (요지)
 
 - 모든 테이블: `SELECT/INSERT/UPDATE/DELETE` 시 `auth.uid() = user_id` (또는 outfit을 통해 소유자 조인).
-- `profiles`: 본인만 읽기/쓰기.
-- **관리자 읽기**: `public.is_admin()` (**SECURITY DEFINER**, RLS 재귀 방지)가 true인 세션에 대해 주요 테이블에 `SELECT` 정책 추가(본인 정책과 OR). 쓰기/삭제는 MVP에서 관리자에게 열지 않음.
-- **무결성**: 트리거로 `auth.uid()`가 있는 요청에서 `is_admin`을 **false→true로 스스로 올리는 것** 차단. SQL Editor(서비스/`auth.uid()` 없음)에서의 승격은 허용.
+- `profiles`: 본인만 읽기/쓰기(기존). **관리자**는 전역 `SELECT` + **다른 사용자** 행에 대해 `UPDATE`(운영 필드). **`is_admin` 컬럼**은 `auth.uid()`가 있는 요청에서는 **어떤 행에서도 변경 불가**(트리거). **`account_disabled`**는 본인 행에서 변경 불가(트리거).
+- **관리자 읽기**: `public.is_admin()` (**SECURITY DEFINER**)가 true인 세션에 대해 주요 테이블에 `SELECT` 정책 추가(본인 정책과 OR).
+- **`support_tickets`**: 본인 `INSERT`/`SELECT`; 관리자 `SELECT` 전체, `UPDATE`(상태·답변 등).
+- **`app_notices`**: 로그인 사용자 `SELECT`(활성·기간 내); 관리자 `INSERT`/`UPDATE`/`DELETE`/`SELECT` 전체.
+- **무결성**: **`is_admin` API 변경 전면 금지**(UPDATE 트리거) + API 경로 `INSERT` 시 `is_admin` 강제 false 트리거. SQL Editor(`auth.uid()` 없음)에서의 승격·해제는 허용.
 - Storage: 업로드 객체 키가 `auth.uid()` prefix로 시작하는 경우만 write; read는 소유자만 (private 버킷 + signed URL). 버킷 `outfit-photos`는 **대시보드에서 생성**하고 `storage.objects` 정책을 추가해야 함(SQL 마이그레이션만으로는 버킷 미생성).
 
 ## 트리거

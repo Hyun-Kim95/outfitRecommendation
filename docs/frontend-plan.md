@@ -76,7 +76,19 @@ mobile/app/
 ## 관리자 웹 (`admin/`)
 
 - **스택**: Vite, React 19, TypeScript, React Router, TanStack Query, Supabase JS
-- **경로**: `/login` → `/`(대시보드), `/users`, `/outfits`
+- **경로**:
+  - `/login`, `/unauthorized`
+  - `/` 대시보드
+  - `/users`, `/users/:id` 상세, `/users/:id/edit` 편집(닉네임·지역·민감도·온보딩 플래그·`account_disabled` 등)
+  - `/outfits`, `/outfits/:id` 상세(코디·연결 context/rating/feedback 요약)
+  - `/inquiries`, `/inquiries/:id` 문의 상세(상태·관리자 답변)
+  - `/notices`, `/notices/new`, `/notices/:id/edit` 공지 CRUD
 - **인증**: Supabase `signInWithPassword`; 세션 후 `profiles`에서 `is_admin` 확인, 미만족 시 안내 화면
-- **데이터**: 서비스 롤 미사용; RLS의 관리자 `SELECT` 정책으로 집계·목록 조회
+- **데이터**: 서비스 롤 미사용; RLS의 관리자 `SELECT` + 정책이 허용하는 `INSERT`/`UPDATE`
+- **변경 후 UX**: 폼 저장 성공/실패 토스트 또는 인라인 메시지, 목록으로 돌아가기 링크
 - **환경 변수**: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (`.env.example` 참고)
+
+## 모바일 — 문의·비활성 계정 (관리자 기능과 연동)
+
+- **문의**: 설정(또는 동급 진입점)에서 제목·본문 제출 → `support_tickets` insert
+- **비활성 계정**: `profiles.account_disabled === true`이면 프로필 로드 직후 Alert + `signOut` + 로그인 화면

@@ -72,6 +72,8 @@ async function profileAndOnboarding(userId) {
       default_region: '서울',
       default_lat: 37.5665,
       default_lng: 126.978,
+      activity_regions: [{ slug: 'seoul', label: '서울', lat: 37.5665, lng: 126.978 }],
+      default_transports: ['지하철'],
       cold_sensitivity: 'normal',
       heat_sensitivity: 'normal',
       default_transport: '지하철',

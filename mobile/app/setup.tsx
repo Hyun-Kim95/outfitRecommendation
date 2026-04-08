@@ -1,6 +1,20 @@
+import { useTheme } from '@/contexts/ThemeContext';
+import type { ThemeColors } from '@/lib/theme-colors';
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+function createStyles(c: ThemeColors) {
+  return StyleSheet.create({
+    box: { flex: 1, padding: 24, justifyContent: 'center', backgroundColor: c.background },
+    title: { fontSize: 20, fontWeight: '700', marginBottom: 12, color: c.foreground },
+    body: { fontSize: 15, lineHeight: 22, color: c.mutedForeground },
+  });
+}
+
 export default function SetupScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.box}>
       <Text style={styles.title}>Supabase 환경 변수 필요</Text>
@@ -13,9 +27,3 @@ export default function SetupScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  box: { flex: 1, padding: 24, justifyContent: 'center' },
-  title: { fontSize: 20, fontWeight: '700', marginBottom: 12 },
-  body: { fontSize: 15, lineHeight: 22, color: '#444' },
-});

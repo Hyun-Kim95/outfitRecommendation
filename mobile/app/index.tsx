@@ -1,9 +1,24 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Redirect } from 'expo-router';
+import { useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 export default function Index() {
   const { configured, loading, session, profile } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        center: {
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.background,
+        },
+      }),
+    [colors]
+  );
 
   if (!configured) {
     return <Redirect href="/setup" />;
@@ -12,7 +27,7 @@ export default function Index() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#0f766e" />
+        <ActivityIndicator size="large" color={colors.activityIndicator} />
       </View>
     );
   }
@@ -27,7 +42,3 @@ export default function Index() {
 
   return <Redirect href="/(tabs)/home" />;
 }
-
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-});

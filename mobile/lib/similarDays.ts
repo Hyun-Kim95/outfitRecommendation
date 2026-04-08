@@ -1,14 +1,25 @@
+import {
+  averageFeedbackSatisfaction,
+  effectiveOutfitSatisfaction,
+  totalImprovementTagCount,
+} from '@/lib/feedbackSatisfaction';
+import { parseSimilaritySnapshot } from '@/lib/domain/similaritySnapshot';
 import type { Database } from '@/lib/database.types';
 
 type OutfitRow = Database['public']['Tables']['outfit_logs']['Row'];
 type WeatherRow = Database['public']['Tables']['weather_logs']['Row'];
 type ContextRow = Database['public']['Tables']['context_logs']['Row'];
 type RatingRow = Database['public']['Tables']['rating_logs']['Row'];
+type FeedbackListRow = Pick<
+  Database['public']['Tables']['feedback_logs']['Row'],
+  'id' | 'overall_satisfaction' | 'improvement_tags'
+>;
 
 export type OutfitWithRelations = OutfitRow & {
   weather_logs: WeatherRow | null;
   context_logs: ContextRow | null;
   rating_logs: RatingRow | null;
+  feedback_logs: FeedbackListRow[];
 };
 
 export type SimilarSort = 'similarity' | 'rating' | 'recent';
@@ -37,49 +48,52 @@ function tagOverlap(a: string[], b: string[]): number {
 
 function weatherSimilarity(o: OutfitWithRelations, t: TodayVector): number {
   const w = o.weather_logs;
-  if (!w) return 0.35;
+  const snap = parseSimilaritySnapshot(o.similarity_snapshot);
 
-  const dt = Math.abs((w.temperature_current ?? t.temperature_current) - t.temperature_current);
-  const df = Math.abs(
-    (w.temperature_feels_like ?? t.temperature_feels_like) - t.temperature_feels_like
-  );
-  const dh = Math.abs((w.humidity ?? t.humidity) - t.humidity) / 100;
-  const dws = Math.abs((w.wind_speed ?? t.wind_speed) - t.wind_speed) / 20;
+  const cur = w?.temperature_current ?? snap?.temperature_current ?? null;
+  const feels = w?.temperature_feels_like ?? snap?.temperature_feels_like ?? null;
+  const hum = w?.humidity ?? snap?.humidity ?? null;
+  const ws = w?.wind_speed ?? snap?.wind_speed ?? null;
+  const pProb = w?.precipitation_probability ?? snap?.precipitation_probability ?? null;
+
+  if (cur == null || feels == null || hum == null || ws == null || pProb == null) {
+    return snap || w ? 0.42 : 0.35;
+  }
+
+  const dt = Math.abs(cur - t.temperature_current);
+  const df = Math.abs(feels - t.temperature_feels_like);
+  const dh = Math.abs(hum - t.humidity) / 100;
+  const dws = Math.abs(ws - t.wind_speed) / 20;
 
   const tempScore = Math.max(0, 1 - (dt * 0.04 + df * 0.04));
   const humidScore = Math.max(0, 1 - dh);
   const windScore = Math.max(0, 1 - dws);
-  const rainMatch =
-    (w.precipitation_probability ?? 0) > 30 === t.precipMatch ? 1 : 0.6;
+  const rainMatch = pProb > 30 === t.precipMatch ? 1 : 0.6;
 
   return tempScore * 0.35 + humidScore * 0.15 + windScore * 0.15 + rainMatch * 0.15;
 }
 
-function contextSimilarity(ctx: ContextRow | null, t: TodayVector): number {
-  if (!ctx) return 0.4;
-  const tags = Array.isArray(ctx.situation_tags)
-    ? (ctx.situation_tags as string[])
-    : [];
+function contextSimilarity(o: OutfitWithRelations, t: TodayVector): number {
+  const ctx = o.context_logs;
+  const snap = parseSimilaritySnapshot(o.similarity_snapshot);
+  const tagsFromCtx = Array.isArray(ctx?.situation_tags) ? (ctx.situation_tags as string[]) : [];
+  const tags = tagsFromCtx.length > 0 ? tagsFromCtx : (snap?.situation_tags ?? []);
+  if (!ctx && !snap) return 0.4;
+
   const tagS = tagOverlap(t.situationTags, tags);
+  const actLevel = ctx?.activity_level ?? snap?.activity_level ?? null;
+  const ioRatio = ctx?.indoor_outdoor_ratio ?? snap?.indoor_outdoor ?? null;
   const act =
-    !t.activityLevel || !ctx.activity_level
-      ? 0.5
-      : t.activityLevel === ctx.activity_level
-        ? 1
-        : 0.4;
+    !t.activityLevel || !actLevel ? 0.5 : t.activityLevel === actLevel ? 1 : 0.4;
   const io =
-    !t.indoorOutdoor || !ctx.indoor_outdoor_ratio
-      ? 0.5
-      : t.indoorOutdoor === ctx.indoor_outdoor_ratio
-        ? 1
-        : 0.4;
+    !t.indoorOutdoor || !ioRatio ? 0.5 : t.indoorOutdoor === ioRatio ? 1 : 0.4;
   return tagS * 0.5 + act * 0.25 + io * 0.25;
 }
 
 /** PRD 9.1 유사도 가중 합 (0~1 근사) */
 export function similarityScore(o: OutfitWithRelations, t: TodayVector): number {
   const w = weatherSimilarity(o, t);
-  const c = contextSimilarity(o.context_logs, t);
+  const c = contextSimilarity(o, t);
   return w * 0.65 + c * 0.35;
 }
 
@@ -89,19 +103,26 @@ export function scoreRecommendation(
 ): { score: number; similarity: number; warning: boolean; reason: string } {
   const sim = similarityScore(o, t);
   const r = o.rating_logs;
-  const overall = (r?.overall_rating ?? 3) / 5;
-  const wearAgain = r?.would_wear_again === false ? 0 : r?.would_wear_again === true ? 1 : 0.5;
-  const improvements = Array.isArray(r?.improvement_tags)
-    ? (r.improvement_tags as string[]).length
-    : 0;
+  const fb = o.feedback_logs ?? [];
+  const fbAvg = averageFeedbackSatisfaction(fb);
+  const eff = effectiveOutfitSatisfaction(fb, r?.overall_rating ?? null);
+  const overallNorm = (eff ?? 3) / 5;
+  const impFeedback = totalImprovementTagCount(fb);
+  const impLegacy = Array.isArray(r?.improvement_tags) ? (r.improvement_tags as string[]).length : 0;
+  const improvements = impFeedback + impLegacy;
   const impPenalty = Math.min(0.25, improvements * 0.05);
-  const lowSat = (r?.overall_rating ?? 3) <= 2 ? 0.2 : 0;
+  const lowSat = (eff ?? 3) <= 2 ? 0.2 : 0;
 
-  let score = sim * 0.55 + overall * 0.3 + wearAgain * 0.15 - impPenalty - lowSat;
-  const warning =
-    (r?.overall_rating ?? 5) <= 2 || improvements >= 3 || r?.would_wear_again === false;
+  let score = sim * 0.55 + overallNorm * 0.45 - impPenalty - lowSat;
+  const warning = (eff ?? 5) <= 2 || improvements >= 3;
 
-  const reason = `유사 날씨·상황에서 만족도 ${r?.overall_rating ?? '미입력'}점 기록`;
+  const avgLabel =
+    fbAvg != null
+      ? `${fbAvg}(감상 평균)`
+      : r?.overall_rating != null
+        ? `${r.overall_rating}(레거시)`
+        : '미입력';
+  const reason = `유사 날씨·상황에서 만족도 ${avgLabel}점 기록`;
 
   return { score, similarity: sim, warning, reason };
 }
@@ -117,10 +138,15 @@ export function sortOutfits(
   });
 
   if (sort === 'rating') {
-    enriched.sort(
-      (a, b) =>
-        (b.item.rating_logs?.overall_rating ?? 0) - (a.item.rating_logs?.overall_rating ?? 0)
-    );
+    enriched.sort((a, b) => {
+      const sa =
+        effectiveOutfitSatisfaction(a.item.feedback_logs, a.item.rating_logs?.overall_rating ?? null) ??
+        0;
+      const sb =
+        effectiveOutfitSatisfaction(b.item.feedback_logs, b.item.rating_logs?.overall_rating ?? null) ??
+        0;
+      return sb - sa;
+    });
   } else if (sort === 'recent') {
     enriched.sort(
       (a, b) => new Date(b.item.worn_on).getTime() - new Date(a.item.worn_on).getTime()

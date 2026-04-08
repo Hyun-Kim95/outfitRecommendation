@@ -1,9 +1,12 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { IMPROVEMENT_TAGS } from '@/lib/options';
+import { useTheme } from '@/contexts/ThemeContext';
+import { effectiveOutfitSatisfaction } from '@/lib/feedbackSatisfaction';
+import type { ThemeColors } from '@/lib/theme-colors';
+import type { Database } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
 import { useFocusEffect } from '@react-navigation/native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,30 +18,77 @@ import {
   View,
 } from 'react-native';
 
+type FeedbackRow = Database['public']['Tables']['feedback_logs']['Row'];
+
+function createStyles(c: ThemeColors) {
+  return StyleSheet.create({
+    center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: c.background },
+    scroll: { padding: 16, paddingBottom: 40, backgroundColor: c.background },
+    photo: { width: '100%', height: 220, borderRadius: 12, marginBottom: 12 },
+    ph: { backgroundColor: c.muted },
+    date: { fontSize: 18, fontWeight: '700', color: c.foreground },
+    line: { marginTop: 8, fontSize: 16, color: c.foreground },
+    memo: { marginTop: 8, color: c.mutedForeground },
+    outline: {
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: c.primary,
+      alignItems: 'center',
+    },
+    outlineDanger: {
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: c.destructive,
+      alignItems: 'center',
+    },
+    outlineTxt: { color: c.primary, fontWeight: '600' },
+    outlineTxtDanger: { color: c.destructive, fontWeight: '600' },
+    section: { marginTop: 24, fontWeight: '700', fontSize: 16, color: c.foreground },
+    satLine: { marginTop: 8, fontSize: 16, color: c.foreground },
+    stars: { color: c.star, fontSize: 18 },
+    memoBlock: {
+      marginTop: 10,
+      padding: 12,
+      borderRadius: 10,
+      backgroundColor: c.card,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    memoTime: { fontSize: 13, color: c.mutedForeground, marginBottom: 4 },
+    memoText: { fontSize: 15, color: c.foreground },
+    missingText: { color: c.mutedForeground },
+    headerStarBtn: { paddingHorizontal: 12, paddingVertical: 8 },
+    headerStar: { fontSize: 26 },
+  });
+}
+
 export default function OutfitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [loading, setLoading] = useState(true);
   const [row, setRow] = useState<{
+    user_id: string;
     worn_on: string;
     top_category: string | null;
     bottom_category: string | null;
     outer_category: string | null;
     shoes_category: string | null;
+    accessory_tags: unknown;
+    thickness_level: string | null;
     memo: string | null;
     photo_path: string | null;
   } | null>(null);
   const [fav, setFav] = useState(false);
   const [uri, setUri] = useState<string | null>(null);
-  const [ratings, setRatings] = useState({
-    overall: 3,
-    temperature: 3,
-    mobility: 3,
-    context: 3,
-    style: 3,
-    wearAgain: true,
-    improvements: [] as string[],
-  });
+  const [feedbacks, setFeedbacks] = useState<FeedbackRow[]>([]);
+  const [legacyOverall, setLegacyOverall] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     if (!user || !id) return;
@@ -70,18 +120,15 @@ export default function OutfitDetailScreen() {
       setUri(signed?.signedUrl ?? null);
     } else setUri(null);
 
-    const { data: r } = await sb.from('rating_logs').select('*').eq('outfit_log_id', id).maybeSingle();
-    if (r) {
-      setRatings({
-        overall: r.overall_rating ?? 3,
-        temperature: r.temperature_rating ?? 3,
-        mobility: r.mobility_rating ?? 3,
-        context: r.context_fit_rating ?? 3,
-        style: r.style_rating ?? 3,
-        wearAgain: r.would_wear_again !== false,
-        improvements: Array.isArray(r.improvement_tags) ? (r.improvement_tags as string[]) : [],
-      });
-    }
+    const { data: fbRows } = await sb
+      .from('feedback_logs')
+      .select('*')
+      .eq('outfit_log_id', id)
+      .order('created_at', { ascending: false });
+    setFeedbacks((fbRows as FeedbackRow[]) ?? []);
+
+    const { data: r } = await sb.from('rating_logs').select('overall_rating').eq('outfit_log_id', id).maybeSingle();
+    setLegacyOverall(r?.overall_rating ?? null);
 
     setLoading(false);
   }, [user, id]);
@@ -92,181 +139,159 @@ export default function OutfitDetailScreen() {
     }, [load])
   );
 
-  async function toggleFav() {
+  const toggleFav = useCallback(async () => {
     if (!user || !id) return;
     const sb = getSupabase();
     if (!sb) return;
-    if (fav) {
-      await sb.from('favorite_outfits').delete().eq('user_id', user.id).eq('outfit_log_id', id);
-      setFav(false);
-    } else {
-      await sb.from('favorite_outfits').insert({ user_id: user.id, outfit_log_id: id });
-      setFav(true);
+    try {
+      if (fav) {
+        const { error } = await sb
+          .from('favorite_outfits')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('outfit_log_id', id);
+        if (error) throw error;
+        setFav(false);
+      } else {
+        const { error } = await sb.from('favorite_outfits').insert({ user_id: user.id, outfit_log_id: id });
+        if (error) throw error;
+        setFav(true);
+      }
+    } catch (e) {
+      Alert.alert('오류', e instanceof Error ? e.message : '즐겨찾기 처리 실패');
+    }
+  }, [fav, user, id]);
+
+  function confirmDelete() {
+    Alert.alert('착장 삭제', '이 착장 기록과 연결된 감상·만족도 데이터가 함께 삭제됩니다. 계속할까요?', [
+      { text: '취소', style: 'cancel' },
+      { text: '삭제', style: 'destructive', onPress: () => void deleteOutfit() },
+    ]);
+  }
+
+  async function deleteOutfit() {
+    if (!user || !id || !row) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    setDeleting(true);
+    try {
+      if (row.photo_path) {
+        const { error: stErr } = await sb.storage.from('outfit-photos').remove([row.photo_path]);
+        if (stErr) console.warn('storage remove', stErr.message);
+      }
+      const { error } = await sb.from('outfit_logs').delete().eq('id', id).eq('user_id', user.id);
+      if (error) throw error;
+      Alert.alert('삭제됨', '착장 기록이 삭제되었습니다.', [{ text: 'OK', onPress: () => router.back() }]);
+    } catch (e) {
+      Alert.alert('오류', e instanceof Error ? e.message : '삭제 실패');
+    } finally {
+      setDeleting(false);
     }
   }
 
-  async function saveRating() {
-    if (!user || !id) return;
-    const sb = getSupabase();
-    if (!sb) return;
-    const { error } = await sb.from('rating_logs').upsert(
-      {
-        outfit_log_id: id,
-        user_id: user.id,
-        overall_rating: ratings.overall,
-        temperature_rating: ratings.temperature,
-        mobility_rating: ratings.mobility,
-        context_fit_rating: ratings.context,
-        style_rating: ratings.style,
-        would_wear_again: ratings.wearAgain,
-        improvement_tags: ratings.improvements,
-      },
-      { onConflict: 'outfit_log_id' }
-    );
-    if (error) Alert.alert('오류', error.message);
-    else Alert.alert('저장됨', '만족도가 반영되었습니다.');
-  }
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color="#0d9488" />
-      </View>
-    );
-  }
-
-  if (!row) {
-    return (
-      <View style={styles.center}>
-        <Text>찾을 수 없습니다.</Text>
-      </View>
-    );
-  }
+  const aggregateSat = effectiveOutfitSatisfaction(feedbacks, legacyOverall);
+  const memoEntries = feedbacks.filter((f) => f.note && f.note.trim().length > 0);
 
   return (
-    <ScrollView contentContainerStyle={styles.scroll}>
-      {uri ? <Image source={{ uri }} style={styles.photo} /> : <View style={[styles.photo, styles.ph]} />}
-      <Text style={styles.date}>{row.worn_on}</Text>
-      <Text style={styles.line}>
-        {[row.top_category, row.bottom_category, row.outer_category, row.shoes_category]
-          .filter(Boolean)
-          .join(' · ')}
-      </Text>
-      {row.memo ? <Text style={styles.memo}>{row.memo}</Text> : null}
-
-      <Pressable style={styles.outline} onPress={() => router.push(`/feeling/${id}`)}>
-        <Text style={styles.outlineTxt}>감상 기록 (출발/중간/귀가)</Text>
-      </Pressable>
-
-      <Pressable style={styles.outline} onPress={toggleFav}>
-        <Text style={styles.outlineTxt}>{fav ? '즐겨찾기 해제' : '즐겨찾기'}</Text>
-      </Pressable>
-
-      <Text style={styles.section}>만족도 (1~5)</Text>
-      <RatingRow label="전체" v={ratings.overall} set={(n) => setRatings((r) => ({ ...r, overall: n }))} />
-      <RatingRow
-        label="온도"
-        v={ratings.temperature}
-        set={(n) => setRatings((r) => ({ ...r, temperature: n }))}
+    <>
+      <Stack.Screen
+        options={{
+          headerRight:
+            loading || !row
+              ? undefined
+              : () => (
+                  <Pressable
+                    onPress={() => void toggleFav()}
+                    style={styles.headerStarBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={fav ? '즐겨찾기 해제' : '즐겨찾기'}
+                    hitSlop={10}
+                  >
+                    <Text style={[styles.headerStar, { color: fav ? colors.star : colors.mutedForeground }]}>
+                      {fav ? '★' : '☆'}
+                    </Text>
+                  </Pressable>
+                ),
+        }}
       />
-      <RatingRow
-        label="활동"
-        v={ratings.mobility}
-        set={(n) => setRatings((r) => ({ ...r, mobility: n }))}
-      />
-      <RatingRow label="상황" v={ratings.context} set={(n) => setRatings((r) => ({ ...r, context: n }))} />
-      <RatingRow label="스타일" v={ratings.style} set={(n) => setRatings((r) => ({ ...r, style: n }))} />
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.activityIndicator} />
+        </View>
+      ) : !row ? (
+        <View style={styles.center}>
+          <Text style={styles.missingText}>찾을 수 없습니다.</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scroll}>
+          {uri ? <Image source={{ uri }} style={styles.photo} /> : <View style={[styles.photo, styles.ph]} />}
+          <Text style={styles.date}>{row.worn_on}</Text>
+          <Text style={styles.line}>
+            {[row.top_category, row.bottom_category, row.outer_category, row.shoes_category]
+              .filter(Boolean)
+              .join(' · ')}
+          </Text>
+          {row.thickness_level ? <Text style={styles.memo}>두께감: {row.thickness_level}</Text> : null}
+          {Array.isArray(row.accessory_tags) && row.accessory_tags.length > 0 ? (
+            <Text style={styles.memo}>액세서리: {(row.accessory_tags as string[]).join(' · ')}</Text>
+          ) : null}
+          {row.memo ? <Text style={styles.memo}>{row.memo}</Text> : null}
 
-      <Pressable
-        style={styles.rowBtn}
-        onPress={() => setRatings((r) => ({ ...r, wearAgain: !r.wearAgain }))}
-      >
-        <Text>다시 입을 의향: {ratings.wearAgain ? '예' : '아니오'}</Text>
-      </Pressable>
+          <Text style={styles.section}>종합 만족도 (감상 기준)</Text>
+          {aggregateSat != null ? (
+            <>
+              <Text style={styles.satLine}>
+                평균 {aggregateSat % 1 === 0 ? String(aggregateSat) : aggregateSat.toFixed(1)} / 5
+              </Text>
+              {legacyOverall != null && !feedbacks.some((f) => f.overall_satisfaction != null) ? (
+                <Text style={styles.memo}>레거시 단일 평가가 반영되었습니다.</Text>
+              ) : null}
+              <Text style={styles.stars}>
+                {'★'.repeat(Math.min(5, Math.round(aggregateSat)))}
+                {'☆'.repeat(Math.max(0, 5 - Math.round(aggregateSat)))}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.memo}>감상 기록에서 만족도를 남기면 여기에 평균이 표시됩니다.</Text>
+          )}
 
-      <Text style={styles.section}>개선점</Text>
-      <View style={styles.wrap}>
-        {IMPROVEMENT_TAGS.map((t) => (
+          {memoEntries.length > 0 ? (
+            <>
+              <Text style={styles.section}>감상 메모</Text>
+              {memoEntries.map((f) => (
+                <View key={f.id} style={styles.memoBlock}>
+                  <Text style={styles.memoTime}>
+                    {f.time_period ? `${f.time_period} · ` : ''}
+                    {new Date(f.created_at).toLocaleString('ko-KR', {
+                      month: 'numeric',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </Text>
+                  <Text style={styles.memoText}>{f.note}</Text>
+                </View>
+              ))}
+            </>
+          ) : null}
+
+          <Pressable style={styles.outline} onPress={() => router.push(`/feeling/${id}`)}>
+            <Text style={styles.outlineTxt}>감상 기록 (이동·장소·체감·만족도)</Text>
+          </Pressable>
+
+          <Pressable style={styles.outline} onPress={() => router.push(`/outfit/edit/${id}`)}>
+            <Text style={styles.outlineTxt}>착장 수정</Text>
+          </Pressable>
+
           <Pressable
-            key={t}
-            style={[styles.chip, ratings.improvements.includes(t) && styles.chipOn]}
-            onPress={() =>
-              setRatings((r) => ({
-                ...r,
-                improvements: r.improvements.includes(t)
-                  ? r.improvements.filter((x) => x !== t)
-                  : [...r.improvements, t],
-              }))
-            }
+            style={[styles.outlineDanger, deleting && { opacity: 0.6 }]}
+            onPress={confirmDelete}
+            disabled={deleting}
           >
-            <Text style={styles.chipTxt}>{t}</Text>
+            <Text style={styles.outlineTxtDanger}>{deleting ? '삭제 중…' : '착장 삭제'}</Text>
           </Pressable>
-        ))}
-      </View>
-
-      <Pressable style={styles.save} onPress={saveRating}>
-        <Text style={styles.saveTxt}>만족도 저장</Text>
-      </Pressable>
-    </ScrollView>
+        </ScrollView>
+      )}
+    </>
   );
 }
-
-function RatingRow({
-  label,
-  v,
-  set,
-}: {
-  label: string;
-  v: number;
-  set: (n: number) => void;
-}) {
-  return (
-    <View style={styles.rRow}>
-      <Text style={styles.rLabel}>{label}</Text>
-      <View style={styles.stars}>
-        {[1, 2, 3, 4, 5].map((n) => (
-          <Pressable key={n} onPress={() => set(n)} style={styles.starHit}>
-            <Text style={{ fontSize: 22, color: n <= v ? '#ca8a04' : '#d4d4d8' }}>★</Text>
-          </Pressable>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: 16, paddingBottom: 40 },
-  photo: { width: '100%', height: 220, borderRadius: 12, marginBottom: 12 },
-  ph: { backgroundColor: '#e4e4e7' },
-  date: { fontSize: 18, fontWeight: '700' },
-  line: { marginTop: 8, fontSize: 16, color: '#333' },
-  memo: { marginTop: 8, color: '#666' },
-  outline: {
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#0d9488',
-    alignItems: 'center',
-  },
-  outlineTxt: { color: '#0d9488', fontWeight: '600' },
-  section: { marginTop: 24, fontWeight: '700', fontSize: 16 },
-  rRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10, justifyContent: 'space-between' },
-  rLabel: { width: 56, color: '#444' },
-  stars: { flexDirection: 'row' },
-  starHit: { paddingHorizontal: 4 },
-  rowBtn: { marginTop: 12, padding: 10 },
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
-  chip: { padding: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: '#e4e4e7' },
-  chipOn: { backgroundColor: '#fef3c7' },
-  chipTxt: { fontSize: 13 },
-  save: {
-    marginTop: 24,
-    backgroundColor: '#0d9488',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  saveTxt: { color: '#fff', fontWeight: '700' },
-});
