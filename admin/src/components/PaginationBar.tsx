@@ -1,3 +1,4 @@
+import { useLocale, type Locale } from '@/context/LocaleContext';
 import { useMemo } from 'react';
 
 type Props = {
@@ -33,19 +34,24 @@ function buildPageList(current: number, total: number): (number | 'gap')[] {
 }
 
 export function PaginationBar({ page, totalPages, totalCount, pageSize: _pageSize, onPageChange }: Props) {
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const pageItems = useMemo(() => buildPageList(page, totalPages), [page, totalPages]);
 
   if (totalCount === 0) return null;
 
   return (
-    <nav className="pagination-shell pagination-shell--footer" aria-label="페이지 이동">
+    <nav
+      className="pagination-shell pagination-shell--footer"
+      aria-label={isEn ? 'Pagination' : '페이지 이동'}
+    >
       <div className="pagination-nav">
         <button
           type="button"
           className="pagination-chevron"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          aria-label="이전 페이지"
+          aria-label={isEn ? 'Previous page' : '이전 페이지'}
         >
           ‹
         </button>
@@ -73,7 +79,7 @@ export function PaginationBar({ page, totalPages, totalCount, pageSize: _pageSiz
           className="pagination-chevron"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          aria-label="다음 페이지"
+          aria-label={isEn ? 'Next page' : '다음 페이지'}
         >
           ›
         </button>
@@ -83,9 +89,15 @@ export function PaginationBar({ page, totalPages, totalCount, pageSize: _pageSiz
 }
 
 /** 상단 좌측 건수 문구용 */
-export function formatListRange(page: number, pageSize: number, totalCount: number): string {
-  if (totalCount === 0) return '전체 0건';
+export function formatListRange(
+  page: number,
+  pageSize: number,
+  totalCount: number,
+  locale: Locale
+): string {
+  if (totalCount === 0) return locale === 'en' ? '0 items' : '전체 0건';
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, totalCount);
+  if (locale === 'en') return `${from}–${to} of ${totalCount}`;
   return `${from}–${to} / 전체 ${totalCount}건`;
 }

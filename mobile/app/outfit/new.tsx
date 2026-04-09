@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { dummyOutfitPreset } from '@/lib/demoUi';
 import { dateInSeoul } from '@/lib/dates';
@@ -20,6 +21,7 @@ import {
   snapshotToJson,
 } from '@/lib/domain/similaritySnapshot';
 import { joinCategories } from '@/lib/outfitFormUtils';
+import { optionLabel } from '@/lib/optionLabels';
 import { getPrimaryCoords, getPrimaryRegionSlug } from '@/lib/profileCompat';
 import type { Json } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
@@ -133,6 +135,8 @@ function createStyles(c: ThemeColors) {
 
 export default function NewOutfitScreen() {
   const { user, profile } = useAuth();
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [tab, setTab] = useState<OutfitTab>('top');
@@ -157,13 +161,19 @@ export default function NewOutfitScreen() {
 
   const summaryLine = useMemo(() => {
     const parts = [
-      top.length ? `상의 ${top.join(', ')}` : null,
-      bottom.length ? `하의 ${bottom.join(', ')}` : null,
-      outer.length ? `아우터 ${outer.join(', ')}` : null,
-      shoes.length ? `신발 ${shoes.join(', ')}` : null,
+      top.length ? `${isEn ? 'Top' : '상의'} ${top.map((x) => optionLabel(locale, x)).join(', ')}` : null,
+      bottom.length
+        ? `${isEn ? 'Bottom' : '하의'} ${bottom.map((x) => optionLabel(locale, x)).join(', ')}`
+        : null,
+      outer.length
+        ? `${isEn ? 'Outer' : '아우터'} ${outer.map((x) => optionLabel(locale, x)).join(', ')}`
+        : null,
+      shoes.length
+        ? `${isEn ? 'Shoes' : '신발'} ${shoes.map((x) => optionLabel(locale, x)).join(', ')}`
+        : null,
     ].filter(Boolean);
-    return parts.length ? parts.join(' · ') : '아직 선택 없음';
-  }, [top, bottom, outer, shoes]);
+    return parts.length ? parts.join(' · ') : isEn ? 'No selection yet' : '아직 선택 없음';
+  }, [top, bottom, outer, shoes, isEn, locale]);
 
   const applyPreset = useCallback(() => {
     setTop([...dummyOutfitPreset.top]);
@@ -181,7 +191,7 @@ export default function NewOutfitScreen() {
   const pickImage = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('권한', '사진 라이브러리 접근을 허용해 주세요.');
+      Alert.alert(isEn ? 'Permission' : '권한', isEn ? 'Please allow photo library access.' : '사진 라이브러리 접근을 허용해 주세요.');
       return;
     }
     const res = await ImagePicker.launchImageLibraryAsync({
@@ -194,7 +204,7 @@ export default function NewOutfitScreen() {
   const takePhoto = useCallback(async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('권한', '카메라를 사용하려면 권한을 허용해 주세요.');
+      Alert.alert(isEn ? 'Permission' : '권한', isEn ? 'Please allow camera access.' : '카메라를 사용하려면 권한을 허용해 주세요.');
       return;
     }
     const res = await ImagePicker.launchCameraAsync({
@@ -218,7 +228,10 @@ export default function NewOutfitScreen() {
 
   async function save() {
     if (top.length === 0 && bottom.length === 0) {
-      Alert.alert('필수', '상의 또는 하의를 하나 이상 선택해 주세요.');
+      Alert.alert(
+        isEn ? 'Required' : '필수',
+        isEn ? 'Select at least one top or bottom item.' : '상의 또는 하의를 하나 이상 선택해 주세요.'
+      );
       return;
     }
     if (!user) return;
@@ -301,11 +314,11 @@ export default function NewOutfitScreen() {
         }
       }
 
-      Alert.alert('저장됨', '착장을 기록했습니다.', [
+      Alert.alert(isEn ? 'Saved' : '저장됨', isEn ? 'Outfit logged.' : '착장을 기록했습니다.', [
         { text: 'OK', onPress: () => router.replace(`/outfit/${outfit.id}`) },
       ]);
     } catch (e) {
-      Alert.alert('오류', e instanceof Error ? e.message : '저장 실패');
+      Alert.alert(isEn ? 'Error' : '오류', e instanceof Error ? e.message : isEn ? 'Save failed' : '저장 실패');
     } finally {
       setBusy(false);
     }
@@ -314,18 +327,20 @@ export default function NewOutfitScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll}>
       <Pressable style={styles.presetBtn} onPress={applyPreset}>
-        <Text style={styles.presetBtnTxt}>빠른 채우기 (예시 선택)</Text>
+        <Text style={styles.presetBtnTxt}>{isEn ? 'Quick fill (sample)' : '빠른 채우기 (예시 선택)'}</Text>
       </Pressable>
 
       <View style={styles.summary}>
-        <Text style={styles.summaryTitle}>선택 요약</Text>
+        <Text style={styles.summaryTitle}>{isEn ? 'Selection summary' : '선택 요약'}</Text>
         <Text style={styles.summaryBody}>{summaryLine}</Text>
       </View>
 
       <View style={styles.tabRow}>
         {(Object.keys(TAB_LABELS) as OutfitTab[]).map((k) => (
           <Pressable key={k} style={[styles.tab, tab === k && styles.tabOn]} onPress={() => setTab(k)}>
-            <Text style={[styles.tabTxt, tab === k && styles.tabTxtOn]}>{TAB_LABELS[k]}</Text>
+            <Text style={[styles.tabTxt, tab === k && styles.tabTxtOn]}>
+              {isEn ? optionLabel('en', TAB_LABELS[k]) : TAB_LABELS[k]}
+            </Text>
           </Pressable>
         ))}
       </View>
@@ -335,76 +350,80 @@ export default function NewOutfitScreen() {
           source={{ uri: asset.uri }}
           style={styles.preview}
           resizeMode="cover"
-          accessibilityLabel="선택한 착장 사진"
+          accessibilityLabel={isEn ? 'Selected outfit photo' : '선택한 착장 사진'}
         />
       ) : null}
       <View style={styles.imgRow}>
         <Pressable style={styles.imgBtn} onPress={pickImage}>
-          <Text style={styles.imgBtnText}>{asset ? '갤러리에서 바꾸기' : '갤러리'}</Text>
+          <Text style={styles.imgBtnText}>{asset ? (isEn ? 'Replace from gallery' : '갤러리에서 바꾸기') : isEn ? 'Gallery' : '갤러리'}</Text>
         </Pressable>
         <Pressable style={styles.imgBtn} onPress={takePhoto}>
-          <Text style={styles.imgBtnText}>{asset ? '카메라로 다시' : '카메라'}</Text>
+          <Text style={styles.imgBtnText}>{asset ? (isEn ? 'Retake with camera' : '카메라로 다시') : isEn ? 'Camera' : '카메라'}</Text>
         </Pressable>
       </View>
 
       {tab === 'top' ? (
         <>
-          <Text style={styles.h}>상의</Text>
-          <Text style={styles.sub}>여러 개 선택 가능합니다.</Text>
+          <Text style={styles.h}>{isEn ? 'Top' : '상의'}</Text>
+          <Text style={styles.sub}>{isEn ? 'Multiple selections allowed.' : '여러 개 선택 가능합니다.'}</Text>
           <ChipMultiRow
             styles={styles}
             options={[...TOP_OPTIONS]}
             values={top}
             onToggle={(o) => toggleMulti(top, setTop, o)}
+            locale={locale}
           />
         </>
       ) : null}
 
       {tab === 'bottom' ? (
         <>
-          <Text style={styles.h}>하의</Text>
-          <Text style={styles.sub}>여러 개 선택 가능합니다.</Text>
+          <Text style={styles.h}>{isEn ? 'Bottom' : '하의'}</Text>
+          <Text style={styles.sub}>{isEn ? 'Multiple selections allowed.' : '여러 개 선택 가능합니다.'}</Text>
           <ChipMultiRow
             styles={styles}
             options={[...BOTTOM_OPTIONS]}
             values={bottom}
             onToggle={(o) => toggleMulti(bottom, setBottom, o)}
+            locale={locale}
           />
         </>
       ) : null}
 
       {tab === 'outer' ? (
         <>
-          <Text style={styles.h}>아우터</Text>
-          <Text style={styles.sub}>여러 개 선택 가능합니다.</Text>
+          <Text style={styles.h}>{isEn ? 'Outer' : '아우터'}</Text>
+          <Text style={styles.sub}>{isEn ? 'Multiple selections allowed.' : '여러 개 선택 가능합니다.'}</Text>
           <ChipMultiRow
             styles={styles}
             options={[...OUTER_OPTIONS]}
             values={outer}
             onToggle={(o) => toggleMulti(outer, setOuter, o)}
+            locale={locale}
           />
         </>
       ) : null}
 
       {tab === 'shoes' ? (
         <>
-          <Text style={styles.h}>신발</Text>
-          <Text style={styles.sub}>여러 개 선택 가능합니다.</Text>
+          <Text style={styles.h}>{isEn ? 'Shoes' : '신발'}</Text>
+          <Text style={styles.sub}>{isEn ? 'Multiple selections allowed.' : '여러 개 선택 가능합니다.'}</Text>
           <ChipMultiRow
             styles={styles}
             options={[...SHOES_OPTIONS]}
             values={shoes}
             onToggle={(o) => toggleMulti(shoes, setShoes, o)}
+            locale={locale}
           />
         </>
       ) : null}
 
       {tab === 'more' ? (
         <>
-          <Text style={styles.h}>전체 두께감</Text>
-          <ChipRow styles={styles} options={[...THICKNESS_OPTIONS]} value={thickness} onChange={setThickness} />
+          <Text style={styles.h}>{isEn ? 'Overall thickness' : '전체 두께감'}</Text>
+          <ChipRow styles={styles} options={[...THICKNESS_OPTIONS]} value={thickness} onChange={setThickness} locale={locale} />
 
-          <Text style={[styles.h, { marginTop: 12 }]}>액세서리·소품</Text>
+          <Text style={[styles.h, { marginTop: 12 }]}>{isEn ? 'Accessories' : '액세서리·소품'}</Text>
           <View style={styles.wrap}>
             {ACCESSORY_OPTIONS.map((t) => (
               <Pressable
@@ -412,12 +431,12 @@ export default function NewOutfitScreen() {
                 style={[styles.chip, accTags.includes(t) && styles.chipOn]}
                 onPress={() => toggleAcc(t)}
               >
-                <Text style={[styles.chipTxt, accTags.includes(t) && styles.chipTxtOn]}>{t}</Text>
+                <Text style={[styles.chipTxt, accTags.includes(t) && styles.chipTxtOn]}>{optionLabel(locale, t)}</Text>
               </Pressable>
             ))}
           </View>
 
-          <Text style={[styles.h, { marginTop: 12 }]}>상황 태그</Text>
+          <Text style={[styles.h, { marginTop: 12 }]}>{isEn ? 'Context tags' : '상황 태그'}</Text>
           <View style={styles.wrap}>
             {SITUATION_TAGS.map((t) => (
               <Pressable
@@ -425,17 +444,17 @@ export default function NewOutfitScreen() {
                 style={[styles.chip, tags.includes(t) && styles.chipOn]}
                 onPress={() => toggleTag(t)}
               >
-                <Text style={[styles.chipTxt, tags.includes(t) && styles.chipTxtOn]}>{t}</Text>
+                <Text style={[styles.chipTxt, tags.includes(t) && styles.chipTxtOn]}>{optionLabel(locale, t)}</Text>
               </Pressable>
             ))}
           </View>
 
-          <Text style={[styles.h, { marginTop: 12 }]}>활동량</Text>
-          <ChipRow styles={styles} options={[...ACTIVITY_OPTIONS]} value={activity} onChange={setActivity} />
-          <Text style={[styles.h, { marginTop: 12 }]}>실내/야외</Text>
-          <ChipRow styles={styles} options={[...INDOOR_OUTDOOR_OPTIONS]} value={io} onChange={setIo} />
+          <Text style={[styles.h, { marginTop: 12 }]}>{isEn ? 'Activity level' : '활동량'}</Text>
+          <ChipRow styles={styles} options={[...ACTIVITY_OPTIONS]} value={activity} onChange={setActivity} locale={locale} />
+          <Text style={[styles.h, { marginTop: 12 }]}>{isEn ? 'Indoor/Outdoor' : '실내/야외'}</Text>
+          <ChipRow styles={styles} options={[...INDOOR_OUTDOOR_OPTIONS]} value={io} onChange={setIo} locale={locale} />
 
-          <Text style={[styles.h, { marginTop: 12 }]}>메모 (선택)</Text>
+          <Text style={[styles.h, { marginTop: 12 }]}>{isEn ? 'Memo (optional)' : '메모 (선택)'}</Text>
           <TextInput
             style={styles.memo}
             multiline
@@ -448,7 +467,7 @@ export default function NewOutfitScreen() {
       ) : null}
 
       <Pressable style={[styles.save, busy && { opacity: 0.7 }]} onPress={save} disabled={busy}>
-        <Text style={styles.saveTxt}>{busy ? '저장 중…' : '저장'}</Text>
+        <Text style={styles.saveTxt}>{busy ? (isEn ? 'Saving…' : '저장 중…') : isEn ? 'Save' : '저장'}</Text>
       </Pressable>
     </ScrollView>
   );
@@ -459,17 +478,19 @@ function ChipMultiRow({
   options,
   values,
   onToggle,
+  locale,
 }: {
   styles: ReturnType<typeof createStyles>;
   options: string[];
   values: string[];
   onToggle: (o: string) => void;
+  locale: 'ko' | 'en';
 }) {
   return (
     <View style={styles.wrap}>
       {options.map((o) => (
         <Pressable key={o} style={[styles.chip, values.includes(o) && styles.chipOn]} onPress={() => onToggle(o)}>
-          <Text style={[styles.chipTxt, values.includes(o) && styles.chipTxtOn]}>{o}</Text>
+          <Text style={[styles.chipTxt, values.includes(o) && styles.chipTxtOn]}>{optionLabel(locale, o)}</Text>
         </Pressable>
       ))}
     </View>
@@ -481,11 +502,13 @@ function ChipRow({
   options,
   value,
   onChange,
+  locale,
 }: {
   styles: ReturnType<typeof createStyles>;
   options: string[];
   value: string | null;
   onChange: (v: string | null) => void;
+  locale: 'ko' | 'en';
 }) {
   return (
     <View style={styles.wrap}>
@@ -495,7 +518,7 @@ function ChipRow({
           style={[styles.chip, value === o && styles.chipOn]}
           onPress={() => onChange(value === o ? null : o)}
         >
-          <Text style={[styles.chipTxt, value === o && styles.chipTxtOn]}>{o}</Text>
+          <Text style={[styles.chipTxt, value === o && styles.chipTxtOn]}>{optionLabel(locale, o)}</Text>
         </Pressable>
       ))}
     </View>

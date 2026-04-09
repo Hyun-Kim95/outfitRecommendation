@@ -8,6 +8,9 @@ import {
   sanitizePostgrestOrTerm,
   totalPagesFromCount,
 } from '@/lib/admin-pagination';
+import { useLocale } from '@/context/LocaleContext';
+import { localeDateTimeString } from '@/lib/dateLocale';
+import { formatDefaultRegionDisplay } from '@/lib/regionDisplay';
 import { getSupabase } from '@/lib/supabase';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
@@ -25,6 +28,8 @@ type Row = {
 type AccountFilter = 'all' | 'active' | 'disabled';
 
 export function UsersPage() {
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const [searchParams, setSearchParams] = useSearchParams();
   const page = useMemo(() => parsePageParam(searchParams.get('page')), [searchParams]);
   const qParam = searchParams.get('q') ?? '';
@@ -87,49 +92,48 @@ export function UsersPage() {
     setSearchParams(patchSearchParams(searchParams, { status: next === 'all' ? null : next, page: 1 }));
   };
 
-  if (q.isLoading) return <p className="muted">불러오는 중…</p>;
-  if (q.isError) return <p className="error">목록을 불러오지 못했습니다.</p>;
+  if (q.isLoading) return <p className="muted">{isEn ? 'Loading…' : '불러오는 중…'}</p>;
+  if (q.isError) return <p className="error">{isEn ? 'Failed to load users.' : '목록을 불러오지 못했습니다.'}</p>;
 
   const rows = q.data!.rows;
-  const rangeText = formatListRange(Math.min(page, totalPages), ADMIN_PAGE_SIZE, totalCount);
+  const rangeText = formatListRange(Math.min(page, totalPages), ADMIN_PAGE_SIZE, totalCount, locale);
 
   return (
     <div>
-      <h1>사용자</h1>
-      <p className="muted">페이지당 {ADMIN_PAGE_SIZE}명 · 최신순</p>
+      <h1>{isEn ? 'Users' : '사용자'}</h1>
       <TableListToolbar rangeText={rangeText}>
         <input
           type="search"
-          placeholder="닉네임·지역·사용자 ID(UUID)"
+          placeholder={isEn ? 'Nickname, region, user ID(UUID)' : '닉네임·지역·사용자 ID(UUID)'}
           value={searchDraft}
           onChange={(e) => setSearchDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') applySearch();
           }}
-          aria-label="사용자 검색"
+          aria-label={isEn ? 'User search' : '사용자 검색'}
         />
         <button type="button" className="filter-btn" onClick={applySearch}>
-          검색
+          {isEn ? 'Search' : '검색'}
         </button>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value as AccountFilter)}
-          aria-label="계정 상태 필터"
+          aria-label={isEn ? 'Account status filter' : '계정 상태 필터'}
         >
-          <option value="all">전체</option>
-          <option value="active">정상만</option>
-          <option value="disabled">비활성만</option>
+          <option value="all">{isEn ? 'All' : '전체'}</option>
+          <option value="active">{isEn ? 'Active only' : '정상만'}</option>
+          <option value="disabled">{isEn ? 'Disabled only' : '비활성만'}</option>
         </select>
       </TableListToolbar>
       <div className="table-wrap">
         <table className="data-table">
           <thead>
             <tr>
-              <th>닉네임</th>
-              <th>지역</th>
-              <th>관리자</th>
-              <th>상태</th>
-              <th>가입일</th>
+              <th>{isEn ? 'Nickname' : '닉네임'}</th>
+              <th>{isEn ? 'Region' : '지역'}</th>
+              <th>{isEn ? 'Admin' : '관리자'}</th>
+              <th>{isEn ? 'Status' : '상태'}</th>
+              <th>{isEn ? 'Created' : '가입일'}</th>
             </tr>
           </thead>
           <tbody>
@@ -137,21 +141,21 @@ export function UsersPage() {
               <tr key={r.id}>
                 <td>
                   <Link to={`/users/${r.id}`} className="linkish">
-                    {r.nickname?.trim() || '이름 없음'}
+                    {r.nickname?.trim() || (isEn ? 'No name' : '이름 없음')}
                   </Link>
                 </td>
-                <td>{r.default_region ?? '—'}</td>
-                <td>{r.is_admin ? <span className="badge">관리자</span> : '—'}</td>
+                <td>{formatDefaultRegionDisplay(locale, r.default_region)}</td>
+                <td>{r.is_admin ? <span className="badge">{isEn ? 'Admin' : '관리자'}</span> : '—'}</td>
                 <td>
-                  {r.account_disabled ? <span className="badge danger">비활성</span> : '정상'}
+                  {r.account_disabled ? <span className="badge danger">{isEn ? 'Disabled' : '비활성'}</span> : isEn ? 'Active' : '정상'}
                 </td>
-                <td>{new Date(r.created_at).toLocaleString('ko-KR')}</td>
+                <td>{localeDateTimeString(locale, r.created_at)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {rows.length === 0 ? <p className="muted">조건에 맞는 사용자가 없습니다.</p> : null}
+      {rows.length === 0 ? <p className="muted">{isEn ? 'No users match the filter.' : '조건에 맞는 사용자가 없습니다.'}</p> : null}
       <PaginationBar
         page={Math.min(page, totalPages)}
         totalPages={totalPages}

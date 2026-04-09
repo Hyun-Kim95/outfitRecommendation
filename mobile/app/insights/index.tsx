@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { computeInsightSummary } from '@/lib/insightsStats';
 import { fetchOutfitsWithRelations } from '@/lib/queries';
@@ -36,6 +37,8 @@ function createStyles(c: ThemeColors) {
 
 export default function InsightsScreen() {
   const { user } = useAuth();
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +72,11 @@ export default function InsightsScreen() {
   if (!summary) {
     return (
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.lead}>로그인 후 기록이 쌓이면 만족도와 상황 패턴을 볼 수 있어요.</Text>
+        <Text style={styles.lead}>
+          {isEn
+            ? 'Once records accumulate after sign-in, you can see satisfaction and context patterns.'
+            : '로그인 후 기록이 쌓이면 만족도와 상황 패턴을 볼 수 있어요.'}
+        </Text>
       </ScrollView>
     );
   }
@@ -77,29 +84,31 @@ export default function InsightsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll}>
       <Text style={styles.lead}>
-        날씨·상황·체감·만족도를 남길수록 추천과 &quot;비슷한 날&quot;이 정확해집니다.
+        {isEn
+          ? 'The more weather/context/feeling/satisfaction you record, the more accurate recommendations and "Similar Days" become.'
+          : '날씨·상황·체감·만족도를 남길수록 추천과 "비슷한 날"이 정확해집니다.'}
       </Text>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>요약</Text>
+        <Text style={styles.cardTitle}>{isEn ? 'Summary' : '요약'}</Text>
         <View style={styles.row}>
-          <Text style={styles.label}>착장 기록</Text>
-          <Text style={styles.value}>{summary.outfitCount}건</Text>
+          <Text style={styles.label}>{isEn ? 'Outfit logs' : '착장 기록'}</Text>
+          <Text style={styles.value}>{summary.outfitCount}{isEn ? '' : '건'}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>기록한 날</Text>
-          <Text style={styles.value}>{summary.distinctDays}일</Text>
+          <Text style={styles.label}>{isEn ? 'Recorded days' : '기록한 날'}</Text>
+          <Text style={styles.value}>{summary.distinctDays}{isEn ? '' : '일'}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>감상(회고) 항목</Text>
-          <Text style={styles.value}>{summary.feedbackEntryCount}건</Text>
+          <Text style={styles.label}>{isEn ? 'Feedback entries' : '감상(회고) 항목'}</Text>
+          <Text style={styles.value}>{summary.feedbackEntryCount}{isEn ? '' : '건'}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>감상이 있는 착장</Text>
-          <Text style={styles.value}>{summary.outfitsWithAnyFeedback}건</Text>
+          <Text style={styles.label}>{isEn ? 'Outfits with feedback' : '감상이 있는 착장'}</Text>
+          <Text style={styles.value}>{summary.outfitsWithAnyFeedback}{isEn ? '' : '건'}</Text>
         </View>
         <View style={styles.row}>
-          <Text style={styles.label}>평균 만족도</Text>
+          <Text style={styles.label}>{isEn ? 'Average satisfaction' : '평균 만족도'}</Text>
           <Text style={styles.value}>
             {summary.avgSatisfaction != null ? `${summary.avgSatisfaction} / 5` : '—'}
           </Text>
@@ -107,14 +116,18 @@ export default function InsightsScreen() {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>자주 찍은 상황 태그</Text>
+        <Text style={styles.cardTitle}>{isEn ? 'Top context tags' : '자주 찍은 상황 태그'}</Text>
         {summary.topSituationTags.length === 0 ? (
-          <Text style={styles.lead}>아직 태그가 없어요. 착장 기록에서 상황을 골라 보세요.</Text>
+          <Text style={styles.lead}>
+            {isEn
+              ? 'No tags yet. Try selecting context tags while logging outfits.'
+              : '아직 태그가 없어요. 착장 기록에서 상황을 골라 보세요.'}
+          </Text>
         ) : (
           <View style={styles.tagRow}>
             {summary.topSituationTags.map(({ tag, count }) => (
               <Text key={tag} style={styles.tagLine}>
-                {tag} · {count}회
+                {tag} · {count}{isEn ? '' : '회'}
               </Text>
             ))}
           </View>
@@ -122,8 +135,9 @@ export default function InsightsScreen() {
       </View>
 
       <Text style={styles.foot}>
-        매일 짧게 기록해도 패턴이 쌓입니다. 홈의 추천은 과거 만족도와 비슷한 날씨·상황을 함께
-        봅니다.
+        {isEn
+          ? 'Even short daily logs build patterns. Home recommendations consider both past satisfaction and similar weather/context.'
+          : '매일 짧게 기록해도 패턴이 쌓입니다. 홈의 추천은 과거 만족도와 비슷한 날씨·상황을 함께 봅니다.'}
       </Text>
     </ScrollView>
   );

@@ -1,9 +1,11 @@
+import { useLocale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
+  const { t } = useLocale();
 
   return (
     <Tabs
@@ -22,24 +24,24 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: '홈',
-          tabBarLabel: '홈',
+          title: t('tab.home.title'),
+          tabBarLabel: t('tab.home.label'),
           tabBarIcon: () => <Text style={{ fontSize: 20 }}>🏠</Text>,
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
-          title: '히스토리',
-          tabBarLabel: '기록',
+          title: t('tab.history.title'),
+          tabBarLabel: t('tab.history.label'),
           tabBarIcon: () => <Text style={{ fontSize: 20 }}>📋</Text>,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: '설정',
-          tabBarLabel: '설정',
+          title: t('tab.settings.title'),
+          tabBarLabel: t('tab.settings.label'),
           tabBarIcon: () => <Text style={{ fontSize: 20 }}>⚙️</Text>,
         }}
       />

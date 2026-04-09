@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { userFacingAuthMessage } from '@/lib/auth-errors';
 import type { ThemeColors } from '@/lib/theme-colors';
@@ -45,6 +46,8 @@ function createStyles(c: ThemeColors) {
 
 export default function SignUpScreen() {
   const { signUp } = useAuth();
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [email, setEmail] = useState('');
@@ -57,19 +60,21 @@ export default function SignUpScreen() {
     const { error, session } = await signUp(trimmed, password);
     setBusy(false);
     if (error) {
-      Alert.alert('가입 실패', userFacingAuthMessage(error));
+      Alert.alert(isEn ? 'Sign-up failed' : '가입 실패', userFacingAuthMessage(error));
       return;
     }
     if (session) {
-      Alert.alert('가입 완료', '회원가입이 완료되었습니다. 다음 단계로 이동합니다.', [
-        { text: '확인', onPress: () => router.replace('/') },
+      Alert.alert(isEn ? 'Sign-up complete' : '가입 완료', isEn ? 'Account created. Moving to the next step.' : '회원가입이 완료되었습니다. 다음 단계로 이동합니다.', [
+        { text: isEn ? 'OK' : '확인', onPress: () => router.replace('/') },
       ]);
       return;
     }
     Alert.alert(
-      '인증 메일을 보냈어요',
-      `${trimmed} 주소로 인증 메일을 보냈습니다.\n\n메일함과 스팸함을 확인한 뒤, 메일의 링크로 인증을 마친 다음 로그인해 주세요.`,
-      [{ text: '로그인 화면으로', onPress: () => router.replace('/(auth)/sign-in') }]
+      isEn ? 'Verification email sent' : '인증 메일을 보냈어요',
+      isEn
+        ? `A verification email was sent to ${trimmed}.\n\nPlease check inbox/spam, verify with the link, then sign in.`
+        : `${trimmed} 주소로 인증 메일을 보냈습니다.\n\n메일함과 스팸함을 확인한 뒤, 메일의 링크로 인증을 마친 다음 로그인해 주세요.`,
+      [{ text: isEn ? 'Go to sign-in' : '로그인 화면으로', onPress: () => router.replace('/(auth)/sign-in') }]
     );
   }
 
@@ -78,10 +83,10 @@ export default function SignUpScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.title}>회원가입</Text>
+      <Text style={styles.title}>{isEn ? 'Sign up' : '회원가입'}</Text>
       <TextInput
         style={styles.input}
-        placeholder="이메일"
+        placeholder={isEn ? 'Email' : '이메일'}
         placeholderTextColor={colors.mutedForeground}
         autoCapitalize="none"
         keyboardType="email-address"
@@ -90,7 +95,7 @@ export default function SignUpScreen() {
       />
       <TextInput
         style={styles.input}
-        placeholder="비밀번호 (6자 이상 권장)"
+        placeholder={isEn ? 'Password (6+ chars recommended)' : '비밀번호 (6자 이상 권장)'}
         placeholderTextColor={colors.mutedForeground}
         secureTextEntry
         value={password}
@@ -101,11 +106,11 @@ export default function SignUpScreen() {
         onPress={onSubmit}
         disabled={busy}
       >
-        <Text style={styles.buttonText}>{busy ? '처리 중…' : '가입'}</Text>
+        <Text style={styles.buttonText}>{busy ? (isEn ? 'Processing…' : '처리 중…') : isEn ? 'Sign up' : '가입'}</Text>
       </Pressable>
       <Link href="/(auth)/sign-in" asChild>
         <Pressable style={styles.linkWrap}>
-          <Text style={styles.link}>이미 계정이 있음</Text>
+          <Text style={styles.link}>{isEn ? 'Already have an account' : '이미 계정이 있음'}</Text>
         </Pressable>
       </Link>
     </KeyboardAvoidingView>

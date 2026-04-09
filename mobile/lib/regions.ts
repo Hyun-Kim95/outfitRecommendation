@@ -1,3 +1,5 @@
+import type { Locale } from '@/contexts/LocaleContext';
+
 /** 온보딩·날씨용 프리셋 지역 (좌표 고정, 최대 3개까지 선택) */
 export type PresetRegion = {
   slug: string;
@@ -48,4 +50,60 @@ export const PRESET_REGIONS: readonly PresetRegion[] = [
 
 export function findPresetBySlug(slug: string): PresetRegion | undefined {
   return PRESET_REGIONS.find((r) => r.slug === slug);
+}
+
+/** 영어 UI용 — slug 기준 (DB 저장 라벨은 한글 유지 가능) */
+export const REGION_LABEL_EN: Record<string, string> = {
+  seoul: 'Seoul',
+  busan: 'Busan',
+  daegu: 'Daegu',
+  incheon: 'Incheon',
+  gwangju: 'Gwangju',
+  daejeon: 'Daejeon',
+  ulsan: 'Ulsan',
+  sejong: 'Sejong',
+  jeju: 'Jeju',
+  suwon: 'Suwon',
+  changwon: 'Changwon',
+  cheongju: 'Cheongju',
+  seongnam: 'Seongnam',
+  goyang: 'Goyang',
+  yongin: 'Yongin',
+  bucheon: 'Bucheon',
+  ansan: 'Ansan',
+  anyang: 'Anyang',
+  uijeongbu: 'Uijeongbu',
+  hwaseong: 'Hwaseong',
+  cheonan: 'Cheonan',
+  pyeongtaek: 'Pyeongtaek',
+  jeonju: 'Jeonju',
+  pohang: 'Pohang',
+  gumi: 'Gumi',
+  gangneung: 'Gangneung',
+  chuncheon: 'Chuncheon',
+  wonju: 'Wonju',
+  gimhae: 'Gimhae',
+  mokpo: 'Mokpo',
+  yeosu: 'Yeosu',
+  suncheon: 'Suncheon',
+  hanam: 'Hanam',
+  siheung: 'Siheung',
+  gwangmyeong: 'Gwangmyeong',
+  namyangju: 'Namyangju',
+};
+
+export function presetRegionDisplayLabel(p: PresetRegion, locale: Locale): string {
+  if (locale === 'ko') return p.label;
+  return REGION_LABEL_EN[p.slug] ?? p.label;
+}
+
+/** activity_regions JSON 등 — 슬러그가 알려진 프리셋이면 영어 라벨 */
+export function activityRegionDisplayLabel(
+  r: { slug: string; label: string },
+  locale: Locale
+): string {
+  if (locale === 'ko') return r.label;
+  const preset = findPresetBySlug(r.slug);
+  if (preset) return presetRegionDisplayLabel(preset, locale);
+  return r.label;
 }

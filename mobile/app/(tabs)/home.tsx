@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { HomeWeatherPreview } from '@/lib/domain/homeWeather';
 import { dateInSeoul } from '@/lib/dates';
@@ -7,12 +8,14 @@ import { fetchOutfitsWithRelations } from '@/lib/queries';
 import { SITUATION_TAGS } from '@/lib/options';
 import { upsertTodayRecommendationLog } from '@/lib/recommendationSession';
 import { scoreRecommendation, type TodayVector } from '@/lib/similarDays';
+import { optionLabel, optionListLabel } from '@/lib/optionLabels';
 import {
   activityLevelFromTransports,
   getActivityRegionsFromProfile,
   getDefaultTransportsFromProfile,
 } from '@/lib/profileCompat';
-import { fetchOpenMeteoSnapshot, formatTempRange } from '@/lib/weather';
+import { activityRegionDisplayLabel } from '@/lib/regions';
+import { displayWeatherCondition, fetchOpenMeteoSnapshot, formatTempRange } from '@/lib/weather';
 import { getSupabase } from '@/lib/supabase';
 import { useTodayRecommendStore } from '@/stores/todayRecommendStore';
 import { useFocusEffect } from '@react-navigation/native';
@@ -147,51 +150,79 @@ function WeatherSummaryCard({
   styles: ReturnType<typeof createStyles>;
   w: HomeWeatherPreview;
 }) {
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
+  const conditionText = displayWeatherCondition(locale, {
+    weather_condition: w.conditionKo,
+    weather_code: w.weatherCode,
+  });
+
   const caution = useMemo(() => {
     const spread = w.max - w.min;
     const parts: string[] = [];
-    if (spread >= 10) parts.push(`일교차 ${Math.round(spread)}° — 겹쳐 입기 좋아요`);
-    if (w.windMs >= 6) parts.push('바람이 강해요');
-    if (w.rainLikely) parts.push('비 가능성 있음');
-    return parts.length ? parts.join(' · ') : '특별한 주의 없음';
-  }, [w]);
+    if (spread >= 10) {
+      parts.push(
+        isEn
+          ? `Daily range ${Math.round(spread)}° — good for layers`
+          : `일교차 ${Math.round(spread)}° — 겹쳐 입기 좋아요`
+      );
+    }
+    if (w.windMs >= 6) parts.push(isEn ? 'Windy' : '바람이 강해요');
+    if (w.rainLikely) parts.push(isEn ? 'Rain possible' : '비 가능성 있음');
+    return parts.length
+      ? parts.join(' · ')
+      : isEn
+        ? 'No special notes'
+        : '특별한 주의 없음';
+  }, [w, isEn]);
 
   return (
     <View style={styles.weatherHero}>
-      <Text style={styles.weatherRegion}>오늘 · {w.regionLabel}</Text>
+      <Text style={styles.weatherRegion}>
+        {isEn ? 'Today · ' : '오늘 · '}
+        {w.regionLabel}
+      </Text>
       <View style={styles.weatherBigRow}>
         <Text style={styles.weatherTemp}>{Math.round(w.temp)}</Text>
         <Text style={styles.weatherUnit}>°C</Text>
-        <Text style={[styles.weatherCond, { marginLeft: 8 }]}>체감 {Math.round(w.feelsLike)}°</Text>
+        <Text style={[styles.weatherCond, { marginLeft: 8 }]}>
+          {isEn ? 'Feels ' : '체감 '}
+          {Math.round(w.feelsLike)}°
+        </Text>
       </View>
-      <Text style={styles.weatherCond}>{w.condition}</Text>
+      <Text style={styles.weatherCond}>{conditionText}</Text>
       <View style={styles.weatherGrid}>
         <View style={styles.weatherCell}>
-          <Text style={styles.weatherCellLabel}>최저 · 최고</Text>
+          <Text style={styles.weatherCellLabel}>{isEn ? 'Low · High' : '최저 · 최고'}</Text>
           <Text style={styles.weatherCellValue}>
             {Math.round(w.min)}° · {Math.round(w.max)}°
           </Text>
         </View>
         <View style={styles.weatherCell}>
-          <Text style={styles.weatherCellLabel}>바람</Text>
+          <Text style={styles.weatherCellLabel}>{isEn ? 'Wind' : '바람'}</Text>
           <Text style={styles.weatherCellValue}>{w.windMs.toFixed(1)} m/s</Text>
         </View>
         <View style={styles.weatherCell}>
-          <Text style={styles.weatherCellLabel}>습도</Text>
+          <Text style={styles.weatherCellLabel}>{isEn ? 'Humidity' : '습도'}</Text>
           <Text style={styles.weatherCellValue}>{w.humidity}%</Text>
         </View>
         <View style={styles.weatherCell}>
-          <Text style={styles.weatherCellLabel}>강수</Text>
-          <Text style={styles.weatherCellValue}>{w.rainLikely ? '가능' : '낮음'}</Text>
+          <Text style={styles.weatherCellLabel}>{isEn ? 'Rain' : '강수'}</Text>
+          <Text style={styles.weatherCellValue}>{w.rainLikely ? (isEn ? 'Likely' : '가능') : isEn ? 'Low' : '낮음'}</Text>
         </View>
       </View>
-      <Text style={styles.caution}>팁: {caution}</Text>
+      <Text style={styles.caution}>
+        {isEn ? 'Tip: ' : '팁: '}
+        {caution}
+      </Text>
     </View>
   );
 }
 
 export default function HomeScreen() {
   const { user, profile } = useAuth();
+  const { locale, t } = useLocale();
+  const isEn = locale === 'en';
   const setSession = useTodayRecommendStore((s) => s.setSession);
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -239,6 +270,9 @@ export default function HomeScreen() {
         if (snap.wind_speed >= 6) strongWind = true;
         if (snap.precipitation_probability > 40) wet = true;
 
+        const dispRegion = activityRegionDisplayLabel(r, locale);
+        const dispCond = displayWeatherCondition(locale, snap);
+
         const { error: wErr } = await sb.from('weather_logs').upsert(
           {
             user_id: user.id,
@@ -262,22 +296,29 @@ export default function HomeScreen() {
         if (wErr) throw new Error(wErr.message);
 
         lineParts.push(
-          `${r.label} · ${Math.round(snap.temperature_current)}° (체감 ${Math.round(snap.temperature_feels_like)}°) · ${snap.weather_condition} · ${formatTempRange(snap.temperature_min, snap.temperature_max)}`
+          `${dispRegion} · ${Math.round(snap.temperature_current)}° (${isEn ? 'feels' : '체감'} ${Math.round(snap.temperature_feels_like)}°) · ${dispCond} · ${formatTempRange(snap.temperature_min, snap.temperature_max, locale)}`
         );
       }
 
       setWeatherLineFallback(lineParts.join('\n'));
 
       let c = '';
-      if (maxSpread >= 10) c += `일교차 ${Math.round(maxSpread)}° — 레이어드 추천. `;
-      if (strongWind) c += '선택한 지역 중 바람이 강한 곳이 있어요. ';
-      if (wet) c += '강수 가능성 있음 — 우산·방수 확인. ';
-      setCaution(c.trim() || '특별한 주의사항 없음');
+      if (maxSpread >= 10) {
+        c += isEn
+          ? `Daily range ${Math.round(maxSpread)}° — layering recommended. `
+          : `일교차 ${Math.round(maxSpread)}° — 레이어드 추천. `;
+      }
+      if (strongWind) c += isEn ? 'Windy in at least one selected area. ' : '선택한 지역 중 바람이 강한 곳이 있어요. ';
+      if (wet) c += isEn ? 'Rain possible — umbrella/waterproof. ' : '강수 가능성 있음 — 우산·방수 확인. ';
+      setCaution(
+        c.trim() ||
+          (isEn ? 'No special cautions' : '특별한 주의사항 없음')
+      );
 
       const refSnap = snaps[0];
       const primarySlug = regions[0]?.slug ?? 'seoul';
       const weatherUi: HomeWeatherPreview = {
-        regionLabel: regions[0]?.label ?? '—',
+        regionLabel: activityRegionDisplayLabel(regions[0] ?? { slug: 'seoul', label: '서울' }, locale),
         temp: refSnap.temperature_current,
         feelsLike: refSnap.temperature_feels_like,
         min: refSnap.temperature_min,
@@ -285,7 +326,8 @@ export default function HomeScreen() {
         windMs: refSnap.wind_speed,
         humidity: refSnap.humidity,
         rainLikely: refSnap.precipitation_probability > 40,
-        condition: refSnap.weather_condition,
+        conditionKo: refSnap.weather_condition,
+        weatherCode: refSnap.weather_code,
       };
       setWeatherPreview(weatherUi);
 
@@ -311,8 +353,11 @@ export default function HomeScreen() {
       const outfits = await fetchOutfitsWithRelations(user.id);
       const ins = computeInsightSummary(outfits);
       setInsightLine(
-        `착장 ${ins.outfitCount}건 · 감상 ${ins.feedbackEntryCount}건` +
-          (ins.avgSatisfaction != null ? ` · 평균 만족 ${ins.avgSatisfaction}/5` : '')
+        isEn
+          ? `${ins.outfitCount} outfit logs · ${ins.feedbackEntryCount} feedback` +
+              (ins.avgSatisfaction != null ? ` · Avg. satisfaction ${ins.avgSatisfaction}/5` : '')
+          : `착장 ${ins.outfitCount}건 · 감상 ${ins.feedbackEntryCount}건` +
+              (ins.avgSatisfaction != null ? ` · 평균 만족 ${ins.avgSatisfaction}/5` : '')
       );
 
       const past = outfits.filter((o) => o.worn_on !== today);
@@ -338,7 +383,10 @@ export default function HomeScreen() {
 
       const recoItems: RecoItem[] = picks.slice(0, 3).map((s) => ({
         id: s.o.id,
-        summary: [s.o.top_category, s.o.bottom_category, s.o.outer_category].filter(Boolean).join(' · '),
+        summary: [s.o.top_category, s.o.bottom_category, s.o.outer_category]
+          .filter(Boolean)
+          .map((x) => optionListLabel(locale, x))
+          .join(' · '),
         reason: s.reason,
         warning: s.warning,
       }));
@@ -362,12 +410,18 @@ export default function HomeScreen() {
         recommendedOutfitIds: recommendedIds,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : '날씨를 불러오지 못했습니다.');
+      setError(
+        e instanceof Error
+          ? e.message
+          : isEn
+            ? 'Could not load weather.'
+            : '날씨를 불러오지 못했습니다.'
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, profile, quickTags, setSession]);
+  }, [user, profile, quickTags, setSession, locale, isEn]);
 
   useFocusEffect(
     useCallback(() => {
@@ -410,51 +464,74 @@ export default function HomeScreen() {
         <WeatherSummaryCard styles={styles} w={weatherPreview} />
       ) : weatherLineFallback ? (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>오늘 날씨</Text>
+          <Text style={styles.cardTitle}>{isEn ? "Today's weather" : '오늘 날씨'}</Text>
           <Text style={styles.cardBody}>{weatherLineFallback}</Text>
-          <Text style={styles.caution}>주의: {caution}</Text>
+          <Text style={styles.caution}>
+            {isEn ? 'Note: ' : '주의: '}
+            {caution}
+          </Text>
         </View>
       ) : null}
 
       {user && weatherPreview ? (
         <Text style={styles.linkHint}>
-          위 날씨가 DB에 저장되고, 같은 조건으로 과거 착장을 골라 추천합니다.
-          {recoLinked ? ' 오늘의 추천 목록도 기록에 남겼어요.' : ''}
+          {isEn
+            ? 'This weather is saved and used with the same signals to pick past outfits.'
+            : '위 날씨가 DB에 저장되고, 같은 조건으로 과거 착장을 골라 추천합니다.'}
+          {recoLinked
+            ? isEn
+              ? " Today's picks were logged."
+              : ' 오늘의 추천 목록도 기록에 남겼어요.'
+            : ''}
         </Text>
       ) : null}
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>오늘 상황 (추천 반영)</Text>
-        <Text style={styles.muted}>3단계 회고·비슷한 날 비교에도 쓰입니다.</Text>
+        <Text style={styles.cardTitle}>
+          {isEn ? 'Today context (affects recommendations)' : '오늘 상황 (추천 반영)'}
+        </Text>
+        <Text style={styles.muted}>
+          {isEn ? 'Also used in 3-step feedback and similar-day comparison.' : '3단계 회고·비슷한 날 비교에도 쓰입니다.'}
+        </Text>
         <View style={[styles.wrap, { marginTop: 10 }]}>
-          {SITUATION_TAGS.slice(0, 8).map((t) => (
+          {SITUATION_TAGS.slice(0, 8).map((tag) => (
             <Pressable
-              key={t}
-              style={[styles.chip, quickTags.includes(t) && styles.chipOn]}
-              onPress={() => toggleTag(t)}
+              key={tag}
+              style={[styles.chip, quickTags.includes(tag) && styles.chipOn]}
+              onPress={() => toggleTag(tag)}
             >
-              <Text style={[styles.chipText, quickTags.includes(t) && styles.chipTextOn]}>{t}</Text>
+              <Text style={[styles.chipText, quickTags.includes(tag) && styles.chipTextOn]}>
+                {optionLabel(locale, tag)}
+              </Text>
             </Pressable>
           ))}
         </View>
         <Pressable style={styles.secondaryBtn} onPress={applyTags}>
-          <Text style={styles.secondaryBtnText}>상황 적용 후 새로고침</Text>
+          <Text style={styles.secondaryBtnText}>
+            {isEn ? 'Apply context & refresh' : '상황 적용 후 새로고침'}
+          </Text>
         </Pressable>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>오늘 추천 착장</Text>
+        <Text style={styles.cardTitle}>{isEn ? "Today's outfit picks" : '오늘 추천 착장'}</Text>
         {emptyReco ? (
-          <Text style={styles.muted}>기록을 쌓으면 비슷한 날씨·상황과 만족도를 반영해 추천이 나타나요.</Text>
+          <Text style={styles.muted}>
+            {isEn
+              ? 'Add logs to see picks based on similar weather, context, and satisfaction.'
+              : '기록을 쌓으면 비슷한 날씨·상황과 만족도를 반영해 추천이 나타나요.'}
+          </Text>
         ) : (
           reco.map((r) => (
             <Pressable key={r.id} style={styles.recoRow} onPress={() => openReco(r)}>
               {r.warning ? (
                 <View style={styles.warnBadge}>
-                  <Text style={styles.warnBadgeText}>주의</Text>
+                  <Text style={styles.warnBadgeText}>{isEn ? 'Note' : '주의'}</Text>
                 </View>
               ) : null}
-              <Text style={styles.recoSummary}>{r.summary || '카테고리 미입력'}</Text>
+              <Text style={styles.recoSummary}>
+                {r.summary || (isEn ? 'No categories' : '카테고리 미입력')}
+              </Text>
               <Text style={styles.recoReason}>{r.reason}</Text>
             </Pressable>
           ))
@@ -463,25 +540,23 @@ export default function HomeScreen() {
 
       {insightLine && user ? (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>기록이 쌓일수록</Text>
+          <Text style={styles.cardTitle}>{isEn ? 'The more you log' : '기록이 쌓일수록'}</Text>
           <Text style={styles.statLine}>{insightLine}</Text>
-          <Text style={styles.muted}>감상(만족도)이 많을수록 추천이 안정됩니다.</Text>
+          <Text style={styles.muted}>
+            {isEn ? 'More feedback makes recommendations steadier.' : '감상(만족도)이 많을수록 추천이 안정됩니다.'}
+          </Text>
           <Pressable style={styles.secondaryBtn} onPress={() => router.push('/insights')}>
-            <Text style={styles.secondaryBtnText}>통계·분석 보기</Text>
+            <Text style={styles.secondaryBtnText}>{isEn ? 'View insights' : '통계·분석 보기'}</Text>
           </Pressable>
         </View>
       ) : null}
 
       <Pressable style={styles.primaryBtn} onPress={() => router.push('/outfit/new')}>
-        <Text style={styles.primaryBtnText}>빠른 착장 기록</Text>
+        <Text style={styles.primaryBtnText}>{t('home.quickLog')}</Text>
       </Pressable>
 
       <Pressable style={styles.outlineBtn} onPress={() => router.push('/similar')}>
-        <Text style={styles.outlineBtnText}>비슷한 날 보기</Text>
-      </Pressable>
-
-      <Pressable style={[styles.outlineBtn, { marginTop: 8 }]} onPress={() => router.push('/favorites')}>
-        <Text style={styles.outlineBtnText}>★ 즐겨찾기한 착장</Text>
+        <Text style={styles.outlineBtnText}>{t('home.similarDays')}</Text>
       </Pressable>
     </ScrollView>
   );

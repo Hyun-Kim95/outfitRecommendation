@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { userFacingAuthMessage } from '@/lib/auth-errors';
 import type { ThemeColors } from '@/lib/theme-colors';
@@ -45,6 +46,8 @@ function createStyles(c: ThemeColors) {
 
 export default function SignInScreen() {
   const { signIn } = useAuth();
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [email, setEmail] = useState('');
@@ -56,7 +59,7 @@ export default function SignInScreen() {
     const { error } = await signIn(email.trim(), password);
     setBusy(false);
     if (error) {
-      Alert.alert('로그인 실패', userFacingAuthMessage(error));
+      Alert.alert(isEn ? 'Sign-in failed' : '로그인 실패', userFacingAuthMessage(error));
       return;
     }
     router.replace('/');
@@ -67,10 +70,10 @@ export default function SignInScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.title}>로그인</Text>
+      <Text style={styles.title}>{isEn ? 'Sign in' : '로그인'}</Text>
       <TextInput
         style={styles.input}
-        placeholder="이메일"
+        placeholder={isEn ? 'Email' : '이메일'}
         placeholderTextColor={colors.mutedForeground}
         autoCapitalize="none"
         keyboardType="email-address"
@@ -79,7 +82,7 @@ export default function SignInScreen() {
       />
       <TextInput
         style={styles.input}
-        placeholder="비밀번호"
+        placeholder={isEn ? 'Password' : '비밀번호'}
         placeholderTextColor={colors.mutedForeground}
         secureTextEntry
         value={password}
@@ -90,11 +93,11 @@ export default function SignInScreen() {
         onPress={onSubmit}
         disabled={busy}
       >
-        <Text style={styles.buttonText}>{busy ? '처리 중…' : '로그인'}</Text>
+        <Text style={styles.buttonText}>{busy ? (isEn ? 'Processing…' : '처리 중…') : isEn ? 'Sign in' : '로그인'}</Text>
       </Pressable>
       <Link href="/(auth)/sign-up" asChild>
         <Pressable style={styles.linkWrap}>
-          <Text style={styles.link}>계정이 없으면 가입</Text>
+          <Text style={styles.link}>{isEn ? "No account? Sign up" : '계정이 없으면 가입'}</Text>
         </Pressable>
       </Link>
     </KeyboardAvoidingView>

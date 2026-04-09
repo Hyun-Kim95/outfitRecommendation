@@ -295,6 +295,12 @@ button.secondary {
   cursor: pointer;
 }
 
+button.secondary.danger {
+  background: color-mix(in oklch, var(--destructive) 18%, var(--card));
+  color: var(--destructive);
+  border-color: color-mix(in oklch, var(--destructive) 35%, var(--border));
+}
+
 button.linkish {
   width: auto;
   background: none;
@@ -564,6 +570,49 @@ button.linkish {
   filter: brightness(0.97);
 }
 
+.notices-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.notices-header-actions .muted {
+  margin: 0;
+}
+
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.875rem;
+  line-height: 1.2;
+}
+
+.btn-link:hover {
+  filter: brightness(0.95);
+}
+
+@media (max-width: 900px) {
+  .notices-header-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-link {
+    width: 100%;
+  }
+}
+
 @media (max-width: 900px) {
   .table-list-toolbar {
     grid-template-columns: minmax(0, 1fr);
@@ -688,9 +737,64 @@ button.linkish {
   box-shadow: var(--shadow-xs);
 }
 
+.dashboard-charts > h2 + .dashboard-charts-row {
+  margin-top: 0.5rem;
+}
+
+.dashboard-charts-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+@media (min-width: 960px) {
+  .dashboard-charts-row {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+}
+
+.dashboard-doughnuts-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+@media (min-width: 960px) {
+  .dashboard-doughnuts-row {
+    grid-template-columns: repeat(2, 1fr);
+    align-items: start;
+  }
+}
+
+@media (min-width: 1200px) {
+  .dashboard-doughnuts-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 .dashboard-chart-wrap {
-  margin-top: 2rem;
-  max-width: 720px;
+  margin-top: 0;
+  max-width: none;
+  min-height: 280px;
+}
+
+.dashboard-chart-wrap--bar,
+.dashboard-chart-wrap--line {
+  position: relative;
+}
+
+.dashboard-chart-wrap--doughnut {
+  max-width: 440px;
+}
+
+@media (min-width: 960px) {
+  .dashboard-chart-wrap--doughnut {
+    max-width: none;
+    justify-self: center;
+    width: 100%;
+  }
 }
 
 .dashboard-chart-wrap canvas {

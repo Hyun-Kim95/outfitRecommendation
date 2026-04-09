@@ -7,7 +7,9 @@ import {
   sanitizePostgrestOrTerm,
   totalPagesFromCount,
 } from '@/lib/admin-pagination';
-import { ticketStatusKo } from '@/lib/displayLabels';
+import { useLocale } from '@/context/LocaleContext';
+import { localeDateTimeString } from '@/lib/dateLocale';
+import { ticketStatusLabel } from '@/lib/displayLabels';
 import { getSupabase } from '@/lib/supabase';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
@@ -25,6 +27,8 @@ type Row = {
 const TICKET_STATUSES = ['open', 'in_progress', 'answered', 'closed'] as const;
 
 export function InquiriesPage() {
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const [searchParams, setSearchParams] = useSearchParams();
   const page = useMemo(() => parsePageParam(searchParams.get('page')), [searchParams]);
   const qParam = searchParams.get('q') ?? '';
@@ -95,39 +99,38 @@ export function InquiriesPage() {
     );
   };
 
-  if (q.isLoading) return <p className="muted">불러오는 중…</p>;
-  if (q.isError) return <p className="error">목록을 불러오지 못했습니다.</p>;
+  if (q.isLoading) return <p className="muted">{isEn ? 'Loading…' : '불러오는 중…'}</p>;
+  if (q.isError) return <p className="error">{isEn ? 'Failed to load inquiries.' : '목록을 불러오지 못했습니다.'}</p>;
 
   const rows = q.data!.rows;
-  const rangeText = formatListRange(Math.min(page, totalPages), ADMIN_PAGE_SIZE, totalCount);
+  const rangeText = formatListRange(Math.min(page, totalPages), ADMIN_PAGE_SIZE, totalCount, locale);
 
   return (
     <div>
-      <h1>문의</h1>
-      <p className="muted">페이지당 {ADMIN_PAGE_SIZE}건 · 상태는 답변 여부로 자동 반영됩니다.</p>
+      <h1>{isEn ? 'Inquiries' : '문의'}</h1>
       <TableListToolbar rangeText={rangeText}>
         <input
           type="search"
-          placeholder="제목·본문 검색"
+          placeholder={isEn ? 'Search subject/body' : '제목·본문 검색'}
           value={searchDraft}
           onChange={(e) => setSearchDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') applySearch();
           }}
-          aria-label="제목·본문 검색"
+          aria-label={isEn ? 'Search subject/body' : '제목·본문 검색'}
         />
         <button type="button" className="filter-btn" onClick={applySearch}>
-          검색
+          {isEn ? 'Search' : '검색'}
         </button>
         <select
           value={statusFilter}
           onChange={(e) => setTicketStatus(e.target.value)}
-          aria-label="문의 상태 필터"
+          aria-label={isEn ? 'Inquiry status filter' : '문의 상태 필터'}
         >
-          <option value="all">상태 전체</option>
+          <option value="all">{isEn ? 'All statuses' : '상태 전체'}</option>
           {TICKET_STATUSES.map((s) => (
             <option key={s} value={s}>
-              {ticketStatusKo(s)}
+              {ticketStatusLabel(s, locale)}
             </option>
           ))}
         </select>
@@ -136,10 +139,10 @@ export function InquiriesPage() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>제목</th>
-              <th>상태</th>
-              <th>회원</th>
-              <th>접수일</th>
+              <th>{isEn ? 'Subject' : '제목'}</th>
+              <th>{isEn ? 'Status' : '상태'}</th>
+              <th>{isEn ? 'User' : '회원'}</th>
+              <th>{isEn ? 'Created at' : '접수일'}</th>
             </tr>
           </thead>
           <tbody>
@@ -150,19 +153,19 @@ export function InquiriesPage() {
                     {r.subject}
                   </Link>
                 </td>
-                <td>{ticketStatusKo(r.status)}</td>
+                <td>{ticketStatusLabel(r.status, locale)}</td>
                 <td>
                   <Link to={`/users/${r.user_id}`} className="linkish">
-                    {r.profiles?.nickname?.trim() || '이름 없음'}
+                    {r.profiles?.nickname?.trim() || (isEn ? 'No name' : '이름 없음')}
                   </Link>
                 </td>
-                <td>{new Date(r.created_at).toLocaleString('ko-KR')}</td>
+                <td>{localeDateTimeString(locale, r.created_at)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {rows.length === 0 ? <p className="muted">조건에 맞는 문의가 없습니다.</p> : null}
+      {rows.length === 0 ? <p className="muted">{isEn ? 'No inquiries match the filter.' : '조건에 맞는 문의가 없습니다.'}</p> : null}
       <PaginationBar
         page={Math.min(page, totalPages)}
         totalPages={totalPages}

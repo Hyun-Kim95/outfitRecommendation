@@ -1,7 +1,9 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { dateInSeoul } from '@/lib/dates';
 import { effectiveOutfitSatisfaction } from '@/lib/feedbackSatisfaction';
+import { optionListLabel } from '@/lib/optionLabels';
 import { fetchOutfitsWithRelations } from '@/lib/queries';
 import { sortOutfits, type SimilarSort, type TodayVector } from '@/lib/similarDays';
 import {
@@ -65,6 +67,8 @@ function createStyles(c: ThemeColors) {
 
 export default function SimilarDaysScreen() {
   const { user, profile } = useAuth();
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [sort, setSort] = useState<SimilarSort>('similarity');
@@ -112,16 +116,18 @@ export default function SimilarDaysScreen() {
   return (
     <ScrollView contentContainerStyle={styles.scroll}>
       <Text style={styles.sub}>
-        오늘과 비슷한 날씨·상황의 과거 착장입니다. 착장 저장 시 남긴 날씨 스냅샷이 있으면 유사도에
-        반영됩니다. 정렬을 바꿔 다시 불러옵니다.
+        {isEn
+          ? 'Past outfits with weather/context similar to today. Saved weather snapshots are used for similarity. Change sort to reload.'
+          : '오늘과 비슷한 날씨·상황의 과거 착장입니다. 착장 저장 시 남긴 날씨 스냅샷이 있으면 유사도에 반영됩니다. 정렬을 바꿔 다시 불러옵니다.'}
       </Text>
 
       {vec ? (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>오늘 요약</Text>
+          <Text style={styles.cardTitle}>{isEn ? 'Today summary' : '오늘 요약'}</Text>
           <Text style={styles.cardBody}>
-            기온 {Math.round(vec.temperature_current)}° · 체감 {Math.round(vec.temperature_feels_like)}° ·
-            습도 {Math.round(vec.humidity)}% · 바람 {vec.wind_speed.toFixed(1)}m/s
+            {isEn ? 'Temp' : '기온'} {Math.round(vec.temperature_current)}° · {isEn ? 'Feels like' : '체감'}{' '}
+            {Math.round(vec.temperature_feels_like)}° · {isEn ? 'Humidity' : '습도'} {Math.round(vec.humidity)}% ·{' '}
+            {isEn ? 'Wind' : '바람'} {vec.wind_speed.toFixed(1)}m/s
           </Text>
         </View>
       ) : null}
@@ -129,9 +135,9 @@ export default function SimilarDaysScreen() {
       <View style={styles.seg}>
         {(
           [
-            ['similarity', '유사도'],
-            ['rating', '만족도'],
-            ['recent', '최신'],
+            ['similarity', isEn ? 'Similarity' : '유사도'],
+            ['rating', isEn ? 'Satisfaction' : '만족도'],
+            ['recent', isEn ? 'Recent' : '최신'],
           ] as const
         ).map(([k, label]) => (
           <Pressable
@@ -147,7 +153,11 @@ export default function SimilarDaysScreen() {
       {loading ? <ActivityIndicator color={colors.activityIndicator} style={{ marginTop: 24 }} /> : null}
 
       {!loading && rows.length === 0 ? (
-        <Text style={styles.empty}>비교할 과거 기록이 없습니다. 먼저 며칠 기록해 보세요.</Text>
+        <Text style={styles.empty}>
+          {isEn
+            ? 'No past records to compare. Add a few outfit logs first.'
+            : '비교할 과거 기록이 없습니다. 먼저 며칠 기록해 보세요.'}
+        </Text>
       ) : null}
 
       {rows.slice(0, 20).map(({ item, similarity, score, warning }) => {
@@ -158,13 +168,17 @@ export default function SimilarDaysScreen() {
         const satLabel = sat != null ? (sat % 1 === 0 ? String(sat) : sat.toFixed(1)) : '—';
         return (
           <Pressable key={item.id} style={styles.row} onPress={() => router.push(`/outfit/${item.id}`)}>
-            {warning ? <Text style={styles.warn}>저만족 이력</Text> : null}
+            {warning ? <Text style={styles.warn}>{isEn ? 'Low-satisfaction history' : '저만족 이력'}</Text> : null}
             <Text style={styles.date}>{item.worn_on}</Text>
             <Text style={styles.sum}>
-              {[item.top_category, item.bottom_category, item.outer_category].filter(Boolean).join(' · ')}
+              {[item.top_category, item.bottom_category, item.outer_category]
+                .filter(Boolean)
+                .map((x) => optionListLabel(isEn ? 'en' : 'ko', x))
+                .join(' · ')}
             </Text>
             <Text style={styles.meta}>
-              유사 {(similarity * 100).toFixed(0)}% · 추천점수 {score.toFixed(2)} · 만족도 {satLabel}
+              {isEn ? 'Similarity' : '유사'} {(similarity * 100).toFixed(0)}% ·{' '}
+              {isEn ? 'Score' : '추천점수'} {score.toFixed(2)} · {isEn ? 'Satisfaction' : '만족도'} {satLabel}
             </Text>
           </Pressable>
         );

@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getSupabase } from '@/lib/supabase';
 import type { ThemeColors } from '@/lib/theme-colors';
@@ -6,9 +7,9 @@ import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-function statusText(status: string): string {
-  if (status === 'answered') return '답변 완료';
-  return '답변 대기';
+function statusText(status: string, isEn: boolean): string {
+  if (status === 'answered') return isEn ? 'Answered' : '답변 완료';
+  return isEn ? 'Waiting' : '답변 대기';
 }
 
 function createStyles(c: ThemeColors) {
@@ -55,6 +56,8 @@ type Row = {
 export default function MyInquiryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [row, setRow] = useState<Row | null>(null);
@@ -92,7 +95,7 @@ export default function MyInquiryDetailScreen() {
   if (!session?.user) {
     return (
       <View style={styles.center}>
-        <Text style={styles.muted}>로그인이 필요합니다.</Text>
+        <Text style={styles.muted}>{isEn ? 'Sign-in is required.' : '로그인이 필요합니다.'}</Text>
       </View>
     );
   }
@@ -108,7 +111,7 @@ export default function MyInquiryDetailScreen() {
   if (error || !row) {
     return (
       <View style={styles.center}>
-        <Text style={styles.error}>{error ?? '문의를 찾을 수 없습니다.'}</Text>
+        <Text style={styles.error}>{error ?? (isEn ? 'Inquiry not found.' : '문의를 찾을 수 없습니다.')}</Text>
       </View>
     );
   }
@@ -117,24 +120,27 @@ export default function MyInquiryDetailScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>{row.subject}</Text>
       <View style={styles.badge}>
-        <Text style={styles.badgeText}>{statusText(row.status)}</Text>
+        <Text style={styles.badgeText}>{statusText(row.status, isEn)}</Text>
       </View>
       <Text style={styles.meta}>
-        접수 {new Date(row.created_at).toLocaleString('ko-KR')}
+        {isEn ? 'Created ' : '접수 '}
+        {new Date(row.created_at).toLocaleString(isEn ? 'en-US' : 'ko-KR')}
         {row.updated_at !== row.created_at
-          ? ` · 갱신 ${new Date(row.updated_at).toLocaleString('ko-KR')}`
+          ? ` · ${isEn ? 'Updated' : '갱신'} ${new Date(row.updated_at).toLocaleString(isEn ? 'en-US' : 'ko-KR')}`
           : ''}
       </Text>
-      <Text style={styles.labelFirst}>내 문의</Text>
+      <Text style={styles.labelFirst}>{isEn ? 'My inquiry' : '내 문의'}</Text>
       <View style={styles.box}>
         <Text style={styles.body}>{row.body}</Text>
       </View>
-      <Text style={styles.label}>운영진 답변</Text>
+      <Text style={styles.label}>{isEn ? 'Admin reply' : '운영진 답변'}</Text>
       <View style={styles.box}>
         <Text style={styles.body}>
           {row.admin_reply && row.admin_reply.trim().length > 0
             ? row.admin_reply
-            : '아직 답변이 등록되지 않았습니다.'}
+            : isEn
+              ? 'No reply yet.'
+              : '아직 답변이 등록되지 않았습니다.'}
         </Text>
       </View>
     </ScrollView>

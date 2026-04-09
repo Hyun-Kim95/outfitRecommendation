@@ -1,6 +1,8 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { effectiveOutfitSatisfaction } from '@/lib/feedbackSatisfaction';
+import { optionListLabel } from '@/lib/optionLabels';
 import { fetchOutfitsWithRelations } from '@/lib/queries';
 import type { ThemeColors } from '@/lib/theme-colors';
 import { getSupabase } from '@/lib/supabase';
@@ -44,6 +46,8 @@ function createStyles(c: ThemeColors) {
 
 export default function FavoritesScreen() {
   const { user } = useAuth();
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [items, setItems] = useState<Awaited<ReturnType<typeof fetchOutfitsWithRelations>>>([]);
@@ -90,7 +94,9 @@ export default function FavoritesScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.headerStar, { paddingHorizontal: 16, paddingTop: 12 }]}>★ 즐겨찾기한 착장</Text>
+      <Text style={[styles.headerStar, { paddingHorizontal: 16, paddingTop: 12 }]}>
+        {isEn ? '★ Favorite outfits' : '★ 즐겨찾기한 착장'}
+      </Text>
       {loading ? <ActivityIndicator style={{ marginTop: 24 }} color={colors.activityIndicator} /> : null}
       <FlatList
         data={items}
@@ -98,11 +104,15 @@ export default function FavoritesScreen() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           !loading ? (
-            <Text style={styles.empty}>즐겨찾기한 착장이 없습니다. 착장 상세 화면 오른쪽 위 별을 눌러 추가해 보세요.</Text>
+            <Text style={styles.empty}>
+              {isEn
+                ? 'No favorite outfits yet. Tap the star in outfit detail to add one.'
+                : '즐겨찾기한 착장이 없습니다. 착장 상세 화면 오른쪽 위 별을 눌러 추가해 보세요.'}
+            </Text>
           ) : null
         }
         renderItem={({ item }) => (
-          <FavoriteRow item={item} styles={styles} signUrl={signUrl} />
+          <FavoriteRow item={item} styles={styles} signUrl={signUrl} isEn={isEn} />
         )}
       />
     </View>
@@ -113,10 +123,12 @@ function FavoriteRow({
   item,
   styles,
   signUrl,
+  isEn,
 }: {
   item: Awaited<ReturnType<typeof fetchOutfitsWithRelations>>[number];
   styles: ReturnType<typeof createStyles>;
   signUrl: (p: string | null) => Promise<string | null>;
+  isEn: boolean;
 }) {
   const [uri, setUri] = useState<string | null>(null);
   useEffect(() => {
@@ -143,16 +155,19 @@ function FavoriteRow({
         <View style={styles.meta}>
           <Text style={styles.date}>{item.worn_on}</Text>
           <Text style={styles.summary}>
-            {[item.top_category, item.bottom_category, item.outer_category].filter(Boolean).join(' · ') ||
-              '카테고리 미입력'}
+              {[item.top_category, item.bottom_category, item.outer_category]
+                .filter(Boolean)
+                .map((x) => optionListLabel(isEn ? 'en' : 'ko', x))
+                .join(' · ') || (isEn ? 'No category' : '카테고리 미입력')}
           </Text>
           {sat != null ? (
             <Text style={styles.stars}>
-              만족 평균 {sat % 1 === 0 ? String(sat) : sat.toFixed(1)}/5 ·{'★'.repeat(Math.min(5, Math.round(sat)))}
+              {isEn ? 'Avg satisfaction ' : '만족 평균 '}
+              {sat % 1 === 0 ? String(sat) : sat.toFixed(1)}/5 ·{'★'.repeat(Math.min(5, Math.round(sat)))}
               {'☆'.repeat(Math.max(0, 5 - Math.round(sat)))}
             </Text>
           ) : (
-            <Text style={styles.muted}>만족도 미입력</Text>
+            <Text style={styles.muted}>{isEn ? 'No satisfaction yet' : '만족도 미입력'}</Text>
           )}
         </View>
       </View>

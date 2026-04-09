@@ -1,5 +1,6 @@
 import { RequireAdmin } from '@/components/RequireAdmin';
 import { Layout } from '@/components/Layout';
+import { LocaleProvider } from '@/context/LocaleContext';
 import { SessionProvider } from '@/context/SessionContext';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { InquiriesPage } from '@/pages/InquiriesPage';
@@ -18,25 +19,27 @@ import { Route, Routes } from 'react-router-dom';
 export default function App() {
   return (
     <SessionProvider>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/unauthorized" element={<UnauthorizedPage />} />
-        <Route element={<RequireAdmin />}>
-          <Route element={<Layout />}>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/users" element={<UsersPage />} />
-            <Route path="/users/:id" element={<UserDetailPage />} />
-            <Route path="/users/:id/edit" element={<UserEditPage />} />
-            <Route path="/outfits" element={<OutfitsPage />} />
-            <Route path="/outfits/:id" element={<OutfitDetailPage />} />
-            <Route path="/inquiries" element={<InquiriesPage />} />
-            <Route path="/inquiries/:id" element={<InquiryDetailPage />} />
-            <Route path="/notices" element={<NoticesPage />} />
-            <Route path="/notices/new" element={<NoticeFormPage />} />
-            <Route path="/notices/:id/edit" element={<NoticeFormPage />} />
+      <LocaleProvider>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          <Route element={<RequireAdmin />}>
+            <Route element={<Layout />}>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/users" element={<UsersPage />} />
+              <Route path="/users/:id" element={<UserDetailPage />} />
+              <Route path="/users/:id/edit" element={<UserEditPage />} />
+              <Route path="/outfits" element={<OutfitsPage />} />
+              <Route path="/outfits/:id" element={<OutfitDetailPage />} />
+              <Route path="/inquiries" element={<InquiriesPage />} />
+              <Route path="/inquiries/:id" element={<InquiryDetailPage />} />
+              <Route path="/notices" element={<NoticesPage />} />
+              <Route path="/notices/new" element={<NoticeFormPage />} />
+              <Route path="/notices/:id/edit" element={<NoticeFormPage />} />
+            </Route>
           </Route>
-        </Route>
-      </Routes>
+        </Routes>
+      </LocaleProvider>
     </SessionProvider>
   );
 }

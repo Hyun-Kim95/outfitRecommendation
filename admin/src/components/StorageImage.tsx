@@ -1,3 +1,4 @@
+import { useLocale } from '@/context/LocaleContext';
 import { getSupabase } from '@/lib/supabase';
 import { useQuery } from '@tanstack/react-query';
 
@@ -9,7 +10,10 @@ type Props = {
 };
 
 /** Storage private 버킷: 서명 URL로 미리보기 */
-export function StorageImage({ bucket, path, alt = '첨부 이미지', className }: Props) {
+export function StorageImage({ bucket, path, alt, className }: Props) {
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
+  const altText = alt ?? (isEn ? 'Attachment image' : '첨부 이미지');
   const q = useQuery({
     queryKey: ['storage-signed-url', bucket, path],
     enabled: Boolean(path?.trim()),
@@ -24,16 +28,18 @@ export function StorageImage({ bucket, path, alt = '첨부 이미지', className
 
   if (!path?.trim()) return null;
   if (q.isLoading) {
-    return <span className="muted small">이미지 로드 중…</span>;
+    return <span className="muted small">{isEn ? 'Loading image…' : '이미지 로드 중…'}</span>;
   }
   if (q.isError || !q.data) {
-    return <span className="muted small">이미지를 불러올 수 없습니다.</span>;
+    return (
+      <span className="muted small">{isEn ? 'Could not load image.' : '이미지를 불러올 수 없습니다.'}</span>
+    );
   }
 
   return (
     <img
       src={q.data}
-      alt={alt}
+      alt={altText}
       className={className ?? 'storage-image'}
     />
   );

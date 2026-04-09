@@ -8,6 +8,8 @@ import {
   sanitizePostgrestOrTerm,
   totalPagesFromCount,
 } from '@/lib/admin-pagination';
+import { useLocale } from '@/context/LocaleContext';
+import { optionListLabel } from '@/lib/optionLabels';
 import { getSupabase } from '@/lib/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { useQuery } from '@tanstack/react-query';
@@ -117,6 +119,8 @@ type Row = {
 type SnapshotFilter = 'all' | 'yes' | 'no';
 
 export function OutfitsPage() {
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const [searchParams, setSearchParams] = useSearchParams();
   const page = useMemo(() => parsePageParam(searchParams.get('page')), [searchParams]);
   const qParam = searchParams.get('q') ?? '';
@@ -224,12 +228,12 @@ export function OutfitsPage() {
     );
   };
 
-  if (q.isLoading) return <p className="muted">불러오는 중…</p>;
+  if (q.isLoading) return <p className="muted">{isEn ? 'Loading…' : '불러오는 중…'}</p>;
   if (q.isError) {
     const msg = q.error instanceof Error ? q.error.message : String(q.error);
     return (
       <div>
-        <p className="error">목록을 불러오지 못했습니다.</p>
+        <p className="error">{isEn ? 'Failed to load outfits.' : '목록을 불러오지 못했습니다.'}</p>
         <p className="muted small mono" style={{ marginTop: '0.5rem', wordBreak: 'break-word' }}>
           {msg}
         </p>
@@ -238,48 +242,45 @@ export function OutfitsPage() {
   }
 
   const rows = q.data!.rows;
-  const rangeText = formatListRange(Math.min(page, totalPages), ADMIN_PAGE_SIZE, totalCount);
+  const rangeText = formatListRange(Math.min(page, totalPages), ADMIN_PAGE_SIZE, totalCount, locale);
 
   return (
     <div>
-      <h1>착장 기록</h1>
-      <p className="muted">
-        페이지당 {ADMIN_PAGE_SIZE}건 · 최신순 · 체감 버킷·유사일 스냅샷은 모바일 착장 저장 시 채워집니다.
-      </p>
+      <h1>{isEn ? 'Outfit logs' : '착장 기록'}</h1>
       <TableListToolbar rangeText={rangeText}>
         <input
           type="search"
-          placeholder="카테고리·메모·닉네임·착용일(YYYY-MM-DD)·버킷"
+          placeholder={isEn ? 'Category, memo, nickname, worn date(YYYY-MM-DD), bucket' : '카테고리·메모·닉네임·착용일(YYYY-MM-DD)·버킷'}
           value={searchDraft}
           onChange={(e) => setSearchDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') applySearch();
           }}
-          aria-label="착장 기록 검색"
+          aria-label={isEn ? 'Outfit search' : '착장 기록 검색'}
         />
         <button type="button" className="filter-btn" onClick={applySearch}>
-          검색
+          {isEn ? 'Search' : '검색'}
         </button>
         <select
           value={snapshotFilter}
           onChange={(e) => setSnapshot(e.target.value as SnapshotFilter)}
-          aria-label="유사일 스냅샷 필터"
+          aria-label={isEn ? 'Similarity snapshot filter' : '유사일 스냅샷 필터'}
         >
-          <option value="all">스냅샷 전체</option>
-          <option value="yes">스냅샷 있음</option>
-          <option value="no">스냅샷 없음</option>
+          <option value="all">{isEn ? 'All snapshots' : '스냅샷 전체'}</option>
+          <option value="yes">{isEn ? 'With snapshot' : '스냅샷 있음'}</option>
+          <option value="no">{isEn ? 'Without snapshot' : '스냅샷 없음'}</option>
         </select>
       </TableListToolbar>
       <div className="table-wrap">
         <table className="data-table">
           <thead>
             <tr>
-              <th>착용일</th>
-              <th>요약</th>
-              <th>회원</th>
-              <th>체감 버킷</th>
-              <th>스냅샷</th>
-              <th>종합 만족도</th>
+              <th>{isEn ? 'Worn date' : '착용일'}</th>
+              <th>{isEn ? 'Summary' : '요약'}</th>
+              <th>{isEn ? 'User' : '회원'}</th>
+              <th>{isEn ? 'Feels-like bucket' : '체감 버킷'}</th>
+              <th>{isEn ? 'Snapshot' : '스냅샷'}</th>
+              <th>{isEn ? 'Satisfaction' : '종합 만족도'}</th>
             </tr>
           </thead>
           <tbody>
@@ -291,21 +292,23 @@ export function OutfitsPage() {
                   </Link>
                 </td>
                 <td>
-                  {[r.top_category, r.bottom_category, r.outer_category].filter(Boolean).join(' · ') ||
-                    '—'}
+                  {[r.top_category, r.bottom_category, r.outer_category]
+                    .filter(Boolean)
+                    .map((x) => optionListLabel(locale, String(x)))
+                    .join(' · ') || '—'}
                 </td>
                 <td>
                   <Link to={`/users/${r.user_id}`} className="linkish">
-                    {r.profiles?.nickname?.trim() || '이름 없음'}
+                    {r.profiles?.nickname?.trim() || (isEn ? 'No name' : '이름 없음')}
                   </Link>
                 </td>
                 <td>{r.feels_like_bucket != null ? String(r.feels_like_bucket) : '—'}</td>
                 <td className="small muted">{r.similarity_snapshot != null ? '✓' : '—'}</td>
                 <td>
                   {r.satisfaction_avg != null
-                    ? `${r.satisfaction_avg} (감상 평균)`
+                    ? `${r.satisfaction_avg} ${isEn ? '(feedback avg)' : '(감상 평균)'}`
                     : r.rating_logs?.overall_rating != null
-                      ? `${r.rating_logs.overall_rating} (레거시)`
+                      ? `${r.rating_logs.overall_rating} ${isEn ? '(legacy)' : '(레거시)'}`
                       : '—'}
                 </td>
               </tr>
@@ -313,7 +316,7 @@ export function OutfitsPage() {
           </tbody>
         </table>
       </div>
-      {rows.length === 0 ? <p className="muted">조건에 맞는 기록이 없습니다.</p> : null}
+      {rows.length === 0 ? <p className="muted">{isEn ? 'No records match the filter.' : '조건에 맞는 기록이 없습니다.'}</p> : null}
       <PaginationBar
         page={Math.min(page, totalPages)}
         totalPages={totalPages}

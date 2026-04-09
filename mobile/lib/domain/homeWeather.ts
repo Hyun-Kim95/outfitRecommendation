@@ -8,5 +8,7 @@ export type HomeWeatherPreview = {
   windMs: number;
   humidity: number;
   rainLikely: boolean;
-  condition: string;
+  /** API·DB 기준 한글 등 원문 (표시는 Locale + weatherCode로 변환) */
+  conditionKo: string;
+  weatherCode: number;
 };

@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { isExpoGoAndroid } from '@/lib/expo-go-notifications';
 import { getDefaultTransportsFromProfile } from '@/lib/profileCompat';
@@ -63,6 +64,7 @@ function createStyles(c: ThemeColors) {
 
 export default function SettingsScreen() {
   const { profile, signOut } = useAuth();
+  const { locale, setLocale, t } = useLocale();
   const { colors, preference, setPreference } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const transportLabels = useMemo(() => getDefaultTransportsFromProfile(profile), [profile]);
@@ -217,6 +219,29 @@ export default function SettingsScreen() {
         <Pressable style={styles.btnOutline} onPress={() => router.push('/legal/privacy')}>
           <Text style={styles.btnOutlineText}>개인정보 처리방침</Text>
         </Pressable>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.label}>{t('settings.language')}</Text>
+        <Text style={styles.sub}>{t('settings.language.hint')}</Text>
+        <View style={styles.themeRow}>
+          <Pressable
+            style={[styles.themeChip, locale === 'ko' && styles.themeChipOn]}
+            onPress={() => setLocale('ko')}
+          >
+            <Text style={[styles.themeChipText, locale === 'ko' && styles.themeChipTextOn]}>
+              {t('settings.language.ko')}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.themeChip, locale === 'en' && styles.themeChipOn]}
+            onPress={() => setLocale('en')}
+          >
+            <Text style={[styles.themeChipText, locale === 'en' && styles.themeChipTextOn]}>
+              {t('settings.language.en')}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.card}>

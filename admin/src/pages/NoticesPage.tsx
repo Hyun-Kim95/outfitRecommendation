@@ -7,6 +7,8 @@ import {
   sanitizePostgrestOrTerm,
   totalPagesFromCount,
 } from '@/lib/admin-pagination';
+import { useLocale } from '@/context/LocaleContext';
+import { localeDateTimeString } from '@/lib/dateLocale';
 import { getSupabase } from '@/lib/supabase';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
@@ -19,7 +21,6 @@ type Row = {
   is_pinned: boolean;
   starts_at: string;
   ends_at: string | null;
-  sort_order: number;
   created_at: string;
   updated_at: string;
 };
@@ -27,6 +28,8 @@ type Row = {
 type ActiveFilter = 'all' | 'active' | 'inactive';
 
 export function NoticesPage() {
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const [searchParams, setSearchParams] = useSearchParams();
   const page = useMemo(() => parsePageParam(searchParams.get('page')), [searchParams]);
   const qParam = searchParams.get('q') ?? '';
@@ -49,7 +52,7 @@ export function NoticesPage() {
       let req = sb
         .from('app_notices')
         .select(
-          'id, title, is_active, is_pinned, starts_at, ends_at, sort_order, created_at, updated_at',
+          'id, title, is_active, is_pinned, starts_at, ends_at, created_at, updated_at',
           { count: 'exact' }
         );
       if (activeFilter === 'active') req = req.eq('is_active', true);
@@ -91,81 +94,79 @@ export function NoticesPage() {
     setSearchParams(patchSearchParams(searchParams, { active: next === 'all' ? null : next, page: 1 }));
   };
 
-  if (q.isLoading) return <p className="muted">불러오는 중…</p>;
-  if (q.isError) return <p className="error">목록을 불러오지 못했습니다.</p>;
+  if (q.isLoading) return <p className="muted">{isEn ? 'Loading…' : '불러오는 중…'}</p>;
+  if (q.isError) return <p className="error">{isEn ? 'Failed to load notices.' : '목록을 불러오지 못했습니다.'}</p>;
 
   const rows = q.data!.rows;
-  const rangeText = formatListRange(Math.min(page, totalPages), ADMIN_PAGE_SIZE, totalCount);
+  const rangeText = formatListRange(Math.min(page, totalPages), ADMIN_PAGE_SIZE, totalCount, locale);
 
   return (
     <div>
-      <h1>공지</h1>
-      <p className="muted">
-        <Link to="/notices/new" className="linkish">
-          + 새 공지 작성
+      <h1>{isEn ? 'Notices' : '공지'}</h1>
+      <div className="notices-header-actions">
+        <Link to="/notices/new" className="btn-link">
+          {isEn ? '+ New Notice' : '+ 공지 등록'}
         </Link>
-        {' · '}
-        페이지당 {ADMIN_PAGE_SIZE}건 · 고정 글은 항상 위에, 그다음 최신 등록순입니다.
-      </p>
+      </div>
       <TableListToolbar rangeText={rangeText}>
         <input
           type="search"
-          placeholder="제목·본문 검색"
+          placeholder={isEn ? 'Search title/body' : '제목·본문 검색'}
           value={searchDraft}
           onChange={(e) => setSearchDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') applySearch();
           }}
-          aria-label="공지 제목·본문 검색"
+          aria-label={isEn ? 'Search notice title/body' : '공지 제목·본문 검색'}
         />
         <button type="button" className="filter-btn" onClick={applySearch}>
-          검색
+          {isEn ? 'Search' : '검색'}
         </button>
         <select
           value={activeFilter}
           onChange={(e) => setActive(e.target.value as ActiveFilter)}
-          aria-label="활성 여부 필터"
+          aria-label={isEn ? 'Active status filter' : '활성 여부 필터'}
         >
-          <option value="all">활성 전체</option>
-          <option value="active">활성만</option>
-          <option value="inactive">비활성만</option>
+          <option value="all">{isEn ? 'All' : '활성 전체'}</option>
+          <option value="active">{isEn ? 'Active only' : '활성만'}</option>
+          <option value="inactive">{isEn ? 'Inactive only' : '비활성만'}</option>
         </select>
       </TableListToolbar>
       <div className="table-wrap">
         <table className="data-table">
           <thead>
             <tr>
-              <th>고정</th>
-              <th>제목</th>
-              <th>활성</th>
-              <th>시작</th>
-              <th>종료</th>
-              <th>등록일</th>
-              <th>수정일</th>
+              <th>{isEn ? 'Pinned' : '고정'}</th>
+              <th>{isEn ? 'Title' : '제목'}</th>
+              <th>{isEn ? 'Active' : '활성'}</th>
+              <th>{isEn ? 'Start' : '시작'}</th>
+              <th>{isEn ? 'End' : '종료'}</th>
+              <th>{isEn ? 'Created' : '등록일'}</th>
+              <th>{isEn ? 'Updated' : '수정일'}</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id}>
-                <td>{r.is_pinned ? '📌 예' : '—'}</td>
+                <td>{r.is_pinned ? (isEn ? '📌 Yes' : '📌 예') : '—'}</td>
                 <td>
                   <Link to={`/notices/${r.id}/edit`} className="linkish">
                     {r.title}
                   </Link>
                 </td>
-                <td>{r.is_active ? '예' : '아니오'}</td>
-                <td className="small">{new Date(r.starts_at).toLocaleString('ko-KR')}</td>
+                <td>{r.is_active ? (isEn ? 'Yes' : '예') : isEn ? 'No' : '아니오'}</td>
+                <td className="small">{localeDateTimeString(locale, r.starts_at)}</td>
                 <td className="small">
-                  {r.ends_at ? new Date(r.ends_at).toLocaleString('ko-KR') : '—'}
+                  {r.ends_at ? localeDateTimeString(locale, r.ends_at) : '—'}
                 </td>
-                <td className="small">{new Date(r.created_at).toLocaleString('ko-KR')}</td>
-                <td className="small">{new Date(r.updated_at).toLocaleString('ko-KR')}</td>
+                <td className="small">{localeDateTimeString(locale, r.created_at)}</td>
+                <td className="small">{localeDateTimeString(locale, r.updated_at)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      {rows.length === 0 ? <p className="muted">조건에 맞는 공지가 없습니다.</p> : null}
+      {rows.length === 0 ? <p className="muted">{isEn ? 'No notices match the filter.' : '조건에 맞는 공지가 없습니다.'}</p> : null}
       <PaginationBar
         page={Math.min(page, totalPages)}
         totalPages={totalPages}

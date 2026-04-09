@@ -1,11 +1,13 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { FEELING_OPTIONS, IMPROVEMENT_TAGS } from '@/lib/options';
+import { FEEDBACK_PLACE_OPTIONS, FEEDBACK_TIME_OPTIONS, FEELING_OPTIONS, IMPROVEMENT_TAGS } from '@/lib/options';
+import { optionLabel } from '@/lib/optionLabels';
 import { getPrimaryCoords } from '@/lib/profileCompat';
 import type { ThemeColors } from '@/lib/theme-colors';
 import type { Database, Json } from '@/lib/database.types';
 import { getSupabase } from '@/lib/supabase';
-import { fetchOpenMeteoSnapshot } from '@/lib/weather';
+import { fetchOpenMeteoSnapshotAt } from '@/lib/weather';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -98,11 +100,15 @@ function createStyles(c: ThemeColors) {
 }
 
 function weatherSnapshotForInsert(
-  snap: Awaited<ReturnType<typeof fetchOpenMeteoSnapshot>>,
-  regionLabel: string
+  snap: Awaited<ReturnType<typeof fetchOpenMeteoSnapshotAt>>,
+  regionLabel: string,
+  observedAtIso: string,
+  timePeriod: string
 ): Json {
   return {
     fetched_at: new Date().toISOString(),
+    observed_at: observedAtIso,
+    time_period: timePeriod,
     region_label: regionLabel,
     temperature_current: snap.temperature_current,
     temperature_feels_like: snap.temperature_feels_like,
@@ -113,6 +119,7 @@ function weatherSnapshotForInsert(
     precipitation_probability: snap.precipitation_probability,
     precipitation_type: snap.precipitation_type,
     weather_condition: snap.weather_condition,
+    weather_code: snap.weather_code,
   } satisfies Record<string, Json>;
 }
 
@@ -157,11 +164,38 @@ function applyRowToWizard(r: FeedbackRow) {
   }
   return {
     timing: slot,
+    place: r.place_singular ?? null,
+    timePeriod: r.time_period ?? null,
+    observedAt: observedAtFromRow(r),
     feeling: r.feeling_type,
     note: r.note ?? '',
     overallSat: r.overall_satisfaction,
     improvements: improvementListFromRow(r),
   };
+}
+
+function toLocalDatetimeInput(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function observedAtFromRow(r: FeedbackRow): string {
+  if (!r.weather_snapshot || typeof r.weather_snapshot !== 'object' || Array.isArray(r.weather_snapshot)) {
+    return '';
+  }
+  const observedAt = (r.weather_snapshot as Record<string, unknown>).observed_at;
+  if (typeof observedAt !== 'string') return '';
+  return toLocalDatetimeInput(observedAt);
+}
+
+function observedAtIsoFromInput(v: string): string {
+  if (!v.trim()) return new Date().toISOString();
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return new Date().toISOString();
+  return d.toISOString();
 }
 
 function SatisfactionStars({
@@ -187,12 +221,17 @@ function SatisfactionStars({
 export default function FeelingScreen() {
   const { outfitId } = useLocalSearchParams<{ outfitId: string }>();
   const { user, profile } = useAuth();
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [timing, setTiming] = useState<TimingSlot | null>(null);
+  const [place, setPlace] = useState<string | null>(null);
+  const [timePeriod, setTimePeriod] = useState<string | null>(null);
+  const [observedAtLocal, setObservedAtLocal] = useState('');
   const [feeling, setFeeling] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [overallSat, setOverallSat] = useState<number | null>(null);
@@ -234,6 +273,9 @@ export default function FeelingScreen() {
     setEditingId(null);
     setWizardStep(1);
     setTiming(null);
+    setPlace(null);
+    setTimePeriod(null);
+    setObservedAtLocal('');
     setFeeling(null);
     setNote('');
     setOverallSat(null);
@@ -244,6 +286,9 @@ export default function FeelingScreen() {
     const w = applyRowToWizard(r);
     setEditingId(r.id);
     setTiming(w.timing);
+    setPlace(w.place);
+    setTimePeriod(w.timePeriod);
+    setObservedAtLocal(w.observedAt);
     setFeeling(w.feeling ?? null);
     setNote(w.note);
     setOverallSat(w.overallSat);
@@ -258,10 +303,10 @@ export default function FeelingScreen() {
   }
 
   function confirmDelete(id: string) {
-    Alert.alert('삭제', '이 감상 기록을 삭제할까요?', [
-      { text: '취소', style: 'cancel' },
+    Alert.alert(isEn ? 'Delete' : '삭제', isEn ? 'Delete this feedback record?' : '이 감상 기록을 삭제할까요?', [
+      { text: isEn ? 'Cancel' : '취소', style: 'cancel' },
       {
-        text: '삭제',
+        text: isEn ? 'Delete' : '삭제',
         style: 'destructive',
         onPress: () => void deleteFeedback(id),
       },
@@ -276,54 +321,57 @@ export default function FeelingScreen() {
     const { error } = await sb.from('feedback_logs').delete().eq('id', id).eq('user_id', user.id);
     setBusy(false);
     if (error) {
-      Alert.alert('오류', error.message);
+      Alert.alert(isEn ? 'Error' : '오류', error.message);
       return;
     }
     if (editingId === id) resetForm();
     void loadHistory();
   }
 
-  const timePeriodFromTiming = (slot: TimingSlot): string => {
-    if (slot === 'first') return '아침';
-    if (slot === 'middle') return '점심';
-    return '저녁';
-  };
-
   async function save() {
     if (!user || !outfitId) return;
     if (!timing) {
-      Alert.alert('선택', '언제의 감상인지 골라 주세요.');
+      Alert.alert(isEn ? 'Select' : '선택', isEn ? 'Choose when this feedback was recorded.' : '언제의 감상인지 골라 주세요.');
       return;
     }
     if (!feeling) {
-      Alert.alert('선택', '체감을 골라 주세요.');
+      Alert.alert(isEn ? 'Select' : '선택', isEn ? 'Choose your feeling.' : '체감을 골라 주세요.');
+      return;
+    }
+    if (timing === 'middle' && !place) {
+      Alert.alert(isEn ? 'Select' : '선택', isEn ? 'For middle timing, choose a place.' : '중간 감상에서는 위치를 골라 주세요.');
+      return;
+    }
+    if (!timePeriod) {
+      Alert.alert(isEn ? 'Select' : '선택', isEn ? 'Choose a time period.' : '감상 시간대를 골라 주세요.');
       return;
     }
     if (overallSat == null) {
-      Alert.alert('선택', '만족도를 별로 표시해 주세요.');
+      Alert.alert(isEn ? 'Select' : '선택', isEn ? 'Please select satisfaction stars.' : '만족도를 별로 표시해 주세요.');
       return;
     }
 
     const sb = getSupabase();
     if (!sb) return;
     setBusy(true);
+    const observedAtIso = observedAtIsoFromInput(observedAtLocal);
 
     const { lat, lng, label } = getPrimaryCoords(profile);
     let weatherJson: Json | null = null;
     try {
-      const snap = await fetchOpenMeteoSnapshot(lat, lng, label);
-      weatherJson = weatherSnapshotForInsert(snap, label);
+      const snap = await fetchOpenMeteoSnapshotAt(lat, lng, observedAtIso, label);
+      weatherJson = weatherSnapshotForInsert(snap, label, observedAtIso, timePeriod);
     } catch (e) {
       console.warn('weather at feedback save', e);
     }
 
     const payload = {
       timing_type: timing,
-      time_period: timePeriodFromTiming(timing),
-      context_mode: null,
+      time_period: timePeriod,
+      context_mode: timing === 'middle' && place ? 'place' : null,
       transport_type: null,
-      place_singular: null,
-      place_tags: null,
+      place_singular: timing === 'middle' ? place : null,
+      place_tags: timing === 'middle' && place ? [place] : null,
       feeling_type: feeling,
       discomfort_tags: [] as unknown as Json,
       note: note.trim() || null,
@@ -343,22 +391,30 @@ export default function FeelingScreen() {
 
     setBusy(false);
     if (error) {
-      Alert.alert('오류', error.message);
+      Alert.alert(isEn ? 'Error' : '오류', error.message);
       return;
     }
 
     resetForm();
     void loadHistory();
-    Alert.alert('완료', isEdit ? '감상이 수정되었습니다.' : '감상이 저장되었습니다.');
+    Alert.alert(isEn ? 'Done' : '완료', isEdit ? (isEn ? 'Feedback updated.' : '감상이 수정되었습니다.') : isEn ? 'Feedback saved.' : '감상이 저장되었습니다.');
   }
 
   const goNext = () => {
     if (wizardStep === 1 && !timing) {
-      Alert.alert('선택', '타이밍을 골라 주세요.');
+      Alert.alert(isEn ? 'Select' : '선택', isEn ? 'Choose timing.' : '타이밍을 골라 주세요.');
+      return;
+    }
+    if (wizardStep === 1 && timing === 'middle' && !place) {
+      Alert.alert(isEn ? 'Select' : '선택', isEn ? 'For middle timing, choose a place.' : '중간 감상에서는 위치를 골라 주세요.');
+      return;
+    }
+    if (wizardStep === 1 && !timePeriod) {
+      Alert.alert(isEn ? 'Select' : '선택', isEn ? 'Choose a time period.' : '감상 시간대를 골라 주세요.');
       return;
     }
     if (wizardStep === 2 && !feeling) {
-      Alert.alert('선택', '체감을 골라 주세요.');
+      Alert.alert(isEn ? 'Select' : '선택', isEn ? 'Choose your feeling.' : '체감을 골라 주세요.');
       return;
     }
     if (wizardStep < 3) setWizardStep((s) => (s + 1) as 1 | 2 | 3);
@@ -370,11 +426,11 @@ export default function FeelingScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.scroll}>
-      <Text style={styles.sectionTitle}>이 코디에 남긴 감상</Text>
+      <Text style={styles.sectionTitle}>{isEn ? 'Feedback on this outfit' : '이 코디에 남긴 감상'}</Text>
       {loadingList ? (
-        <Text style={styles.hint}>불러오는 중…</Text>
+        <Text style={styles.hint}>{isEn ? 'Loading…' : '불러오는 중…'}</Text>
       ) : history.length === 0 ? (
-        <Text style={styles.hint}>아직 기록이 없습니다.</Text>
+        <Text style={styles.hint}>{isEn ? 'No records yet.' : '아직 기록이 없습니다.'}</Text>
       ) : (
         history.map((r) => (
           <View key={r.id} style={styles.card}>
@@ -383,10 +439,10 @@ export default function FeelingScreen() {
             {r.note ? <Text style={[styles.hint, { marginTop: 6 }]}>{r.note}</Text> : null}
             <View style={styles.cardActions}>
               <Pressable onPress={() => startEdit(r)} disabled={busy}>
-                <Text style={styles.actionTxt}>수정</Text>
+                <Text style={styles.actionTxt}>{isEn ? 'Edit' : '수정'}</Text>
               </Pressable>
               <Pressable onPress={() => confirmDelete(r.id)} disabled={busy}>
-                <Text style={[styles.actionTxt, styles.actionDanger]}>삭제</Text>
+                <Text style={[styles.actionTxt, styles.actionDanger]}>{isEn ? 'Delete' : '삭제'}</Text>
               </Pressable>
             </View>
           </View>
@@ -394,7 +450,7 @@ export default function FeelingScreen() {
       )}
 
       <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
-        {editingId ? '감상 수정' : '새 감상'}
+        {editingId ? (isEn ? 'Edit feedback' : '감상 수정') : isEn ? 'New feedback' : '새 감상'}
       </Text>
 
       <View style={styles.progress}>
@@ -405,26 +461,73 @@ export default function FeelingScreen() {
 
       {wizardStep === 1 ? (
         <>
-          <Text style={styles.stepTitle}>1 · 언제의 감상인가요?</Text>
-          <Text style={styles.stepHint}>한 가지만 선택하면 됩니다.</Text>
+          <Text style={styles.stepTitle}>{isEn ? '1 · When was this feedback?' : '1 · 언제의 감상인가요?'}</Text>
+          <Text style={styles.stepHint}>{isEn ? 'Choose one.' : '한 가지만 선택하면 됩니다.'}</Text>
           {(Object.keys(TIMING_LABELS) as TimingSlot[]).map((slot) => (
             <Pressable
               key={slot}
               style={[styles.timingBig, timing === slot && styles.timingBigOn]}
-              onPress={() => setTiming(slot)}
+              onPress={() => {
+                setTiming(slot);
+                if (slot !== 'middle') setPlace(null);
+              }}
             >
               <Text style={[styles.timingBigTxt, timing === slot && styles.timingBigTxtOn]}>
-                {TIMING_LABELS[slot]}
+                {isEn ? optionLabel('en', TIMING_LABELS[slot]) : TIMING_LABELS[slot]}
               </Text>
             </Pressable>
           ))}
+          {timing === 'middle' ? (
+            <>
+              <Text style={[styles.stepHint, { marginTop: 6, marginBottom: 8 }]}>
+                {isEn ? 'Place during middle timing' : '중간일 때 머문 위치'}
+              </Text>
+              <View style={styles.wrap}>
+                {FEEDBACK_PLACE_OPTIONS.map((p) => (
+                  <Pressable
+                    key={p}
+                    style={[styles.chip, place === p && styles.chipOn]}
+                    onPress={() => setPlace(p)}
+                  >
+                    <Text style={[styles.chipTxt, place === p && styles.chipTxtOn]}>{optionLabel(isEn ? 'en' : 'ko', p)}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          ) : null}
+          <Text style={[styles.stepHint, { marginTop: 14, marginBottom: 8 }]}>
+            {isEn ? 'Feedback time period' : '감상 시간대'}
+          </Text>
+          <View style={styles.wrap}>
+            {FEEDBACK_TIME_OPTIONS.map((tp) => (
+              <Pressable
+                key={tp}
+                style={[styles.chip, timePeriod === tp && styles.chipOn]}
+                onPress={() => setTimePeriod(tp)}
+              >
+                <Text style={[styles.chipTxt, timePeriod === tp && styles.chipTxtOn]}>{optionLabel(isEn ? 'en' : 'ko', tp)}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={[styles.stepHint, { marginTop: 14, marginBottom: 8 }]}>
+            {isEn ? 'Exact timestamp (optional)' : '정확한 기록 시각 (선택)'}
+          </Text>
+          <TextInput
+            style={styles.memo}
+            value={observedAtLocal}
+            onChangeText={setObservedAtLocal}
+            placeholder={isEn ? 'e.g. 2026-04-09T13:30' : '예: 2026-04-09T13:30'}
+            placeholderTextColor={colors.mutedForeground}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
         </>
       ) : null}
 
       {wizardStep === 2 ? (
         <>
-          <Text style={styles.stepTitle}>2 · 체감은 어땠나요?</Text>
-          <Text style={styles.stepHint}>가장 가까운 것을 고르세요.</Text>
+          <Text style={styles.stepTitle}>{isEn ? '2 · How did it feel?' : '2 · 체감은 어땠나요?'}</Text>
+          <Text style={styles.stepHint}>{isEn ? 'Pick the closest one.' : '가장 가까운 것을 고르세요.'}</Text>
           <View style={styles.wrap}>
             {FEELING_OPTIONS.map((f) => (
               <Pressable
@@ -432,7 +535,7 @@ export default function FeelingScreen() {
                 style={[styles.chip, feeling === f && styles.chipOn]}
                 onPress={() => setFeeling(f)}
               >
-                <Text style={[styles.chipTxt, feeling === f && styles.chipTxtOn]}>{f}</Text>
+                <Text style={[styles.chipTxt, feeling === f && styles.chipTxtOn]}>{optionLabel(isEn ? 'en' : 'ko', f)}</Text>
               </Pressable>
             ))}
           </View>
@@ -441,12 +544,14 @@ export default function FeelingScreen() {
 
       {wizardStep === 3 ? (
         <>
-          <Text style={styles.stepTitle}>3 · 만족도와 메모</Text>
-          <Text style={styles.stepHint}>별은 필수, 나머지는 선택입니다.</Text>
-          <Text style={[styles.stepHint, { marginBottom: 8 }]}>전체 만족도</Text>
+          <Text style={styles.stepTitle}>{isEn ? '3 · Satisfaction & notes' : '3 · 만족도와 메모'}</Text>
+          <Text style={styles.stepHint}>{isEn ? 'Stars required, others optional.' : '별은 필수, 나머지는 선택입니다.'}</Text>
+          <Text style={[styles.stepHint, { marginBottom: 8 }]}>{isEn ? 'Overall satisfaction' : '전체 만족도'}</Text>
           <SatisfactionStars value={overallSat} onPick={setOverallSat} />
 
-          <Text style={[styles.stepHint, { marginTop: 16, marginBottom: 8 }]}>개선이 필요했던 점 (선택)</Text>
+          <Text style={[styles.stepHint, { marginTop: 16, marginBottom: 8 }]}>
+            {isEn ? 'Improvement points (optional)' : '개선이 필요했던 점 (선택)'}
+          </Text>
           <View style={styles.wrap}>
             {IMPROVEMENT_TAGS.map((t) => (
               <Pressable
@@ -454,41 +559,45 @@ export default function FeelingScreen() {
                 style={[styles.chip, improvements.includes(t) && styles.chipOn]}
                 onPress={() => toggleImprovement(t)}
               >
-                <Text style={[styles.chipTxt, improvements.includes(t) && styles.chipTxtOn]}>{t}</Text>
+                <Text style={[styles.chipTxt, improvements.includes(t) && styles.chipTxtOn]}>{optionLabel(isEn ? 'en' : 'ko', t)}</Text>
               </Pressable>
             ))}
           </View>
 
-          <Text style={[styles.stepHint, { marginTop: 16, marginBottom: 8 }]}>메모 (선택)</Text>
+          <Text style={[styles.stepHint, { marginTop: 16, marginBottom: 8 }]}>{isEn ? 'Note (optional)' : '메모 (선택)'}</Text>
           <TextInput
             style={styles.memo}
             multiline
             value={note}
             onChangeText={setNote}
-            placeholder="한 줄이면 충분해요"
+            placeholder={isEn ? 'One short line is enough' : '한 줄이면 충분해요'}
             placeholderTextColor={colors.mutedForeground}
           />
 
           <Pressable style={styles.btn} onPress={() => void save()} disabled={busy}>
-            <Text style={styles.btnTxt}>{busy ? '저장 중…' : editingId ? '변경 저장' : '저장'}</Text>
+            <Text style={styles.btnTxt}>
+              {busy ? (isEn ? 'Saving…' : '저장 중…') : editingId ? (isEn ? 'Save changes' : '변경 저장') : isEn ? 'Save' : '저장'}
+            </Text>
           </Pressable>
           <Pressable style={styles.btnGhost} onPress={goBack} disabled={busy}>
-            <Text style={styles.btnGhostTxt}>이전 단계</Text>
+            <Text style={styles.btnGhostTxt}>{isEn ? 'Previous step' : '이전 단계'}</Text>
           </Pressable>
         </>
       ) : (
         <>
           <Pressable style={styles.btn} onPress={goNext} disabled={busy}>
-            <Text style={styles.btnTxt}>{wizardStep === 2 ? '다음 (만족도)' : '다음'}</Text>
+            <Text style={styles.btnTxt}>
+              {wizardStep === 2 ? (isEn ? 'Next (satisfaction)' : '다음 (만족도)') : isEn ? 'Next' : '다음'}
+            </Text>
           </Pressable>
           {wizardStep === 2 ? (
             <Pressable style={styles.btnGhost} onPress={goBack} disabled={busy}>
-              <Text style={styles.btnGhostTxt}>이전 단계</Text>
+              <Text style={styles.btnGhostTxt}>{isEn ? 'Previous step' : '이전 단계'}</Text>
             </Pressable>
           ) : null}
           {editingId && wizardStep === 1 ? (
             <Pressable style={styles.btnGhost} onPress={resetForm} disabled={busy}>
-              <Text style={styles.btnGhostTxt}>수정 취소</Text>
+              <Text style={styles.btnGhostTxt}>{isEn ? 'Cancel edit' : '수정 취소'}</Text>
             </Pressable>
           ) : null}
         </>

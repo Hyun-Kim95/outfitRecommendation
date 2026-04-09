@@ -1,5 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { optionLabel, optionListLabel } from '@/lib/optionLabels';
 import { effectiveOutfitSatisfaction } from '@/lib/feedbackSatisfaction';
 import type { ThemeColors } from '@/lib/theme-colors';
 import type { Database } from '@/lib/database.types';
@@ -69,6 +71,8 @@ function createStyles(c: ThemeColors) {
 export default function OutfitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [loading, setLoading] = useState(true);
@@ -158,15 +162,21 @@ export default function OutfitDetailScreen() {
         setFav(true);
       }
     } catch (e) {
-      Alert.alert('오류', e instanceof Error ? e.message : '즐겨찾기 처리 실패');
+      Alert.alert(isEn ? 'Error' : '오류', e instanceof Error ? e.message : isEn ? 'Failed to update favorite.' : '즐겨찾기 처리 실패');
     }
   }, [fav, user, id]);
 
   function confirmDelete() {
-    Alert.alert('착장 삭제', '이 착장 기록과 연결된 감상·만족도 데이터가 함께 삭제됩니다. 계속할까요?', [
-      { text: '취소', style: 'cancel' },
-      { text: '삭제', style: 'destructive', onPress: () => void deleteOutfit() },
-    ]);
+    Alert.alert(
+      isEn ? 'Delete outfit' : '착장 삭제',
+      isEn
+        ? 'This will also delete linked feedback/satisfaction data. Continue?'
+        : '이 착장 기록과 연결된 감상·만족도 데이터가 함께 삭제됩니다. 계속할까요?',
+      [
+        { text: isEn ? 'Cancel' : '취소', style: 'cancel' },
+        { text: isEn ? 'Delete' : '삭제', style: 'destructive', onPress: () => void deleteOutfit() },
+      ]
+    );
   }
 
   async function deleteOutfit() {
@@ -181,9 +191,9 @@ export default function OutfitDetailScreen() {
       }
       const { error } = await sb.from('outfit_logs').delete().eq('id', id).eq('user_id', user.id);
       if (error) throw error;
-      Alert.alert('삭제됨', '착장 기록이 삭제되었습니다.', [{ text: 'OK', onPress: () => router.back() }]);
+      Alert.alert(isEn ? 'Deleted' : '삭제됨', isEn ? 'Outfit record deleted.' : '착장 기록이 삭제되었습니다.', [{ text: 'OK', onPress: () => router.back() }]);
     } catch (e) {
-      Alert.alert('오류', e instanceof Error ? e.message : '삭제 실패');
+      Alert.alert(isEn ? 'Error' : '오류', e instanceof Error ? e.message : isEn ? 'Delete failed' : '삭제 실패');
     } finally {
       setDeleting(false);
     }
@@ -204,7 +214,7 @@ export default function OutfitDetailScreen() {
                     onPress={() => void toggleFav()}
                     style={styles.headerStarBtn}
                     accessibilityRole="button"
-                    accessibilityLabel={fav ? '즐겨찾기 해제' : '즐겨찾기'}
+                    accessibilityLabel={fav ? (isEn ? 'Remove from favorites' : '즐겨찾기 해제') : isEn ? 'Add to favorites' : '즐겨찾기'}
                     hitSlop={10}
                   >
                     <Text style={[styles.headerStar, { color: fav ? colors.star : colors.mutedForeground }]}>
@@ -220,7 +230,7 @@ export default function OutfitDetailScreen() {
         </View>
       ) : !row ? (
         <View style={styles.center}>
-          <Text style={styles.missingText}>찾을 수 없습니다.</Text>
+          <Text style={styles.missingText}>{isEn ? 'Not found.' : '찾을 수 없습니다.'}</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
@@ -229,22 +239,31 @@ export default function OutfitDetailScreen() {
           <Text style={styles.line}>
             {[row.top_category, row.bottom_category, row.outer_category, row.shoes_category]
               .filter(Boolean)
+              .map((x) => optionListLabel(isEn ? 'en' : 'ko', x))
               .join(' · ')}
           </Text>
-          {row.thickness_level ? <Text style={styles.memo}>두께감: {row.thickness_level}</Text> : null}
+          {row.thickness_level ? (
+            <Text style={styles.memo}>
+              {isEn ? 'Thickness' : '두께감'}: {optionLabel(isEn ? 'en' : 'ko', row.thickness_level)}
+            </Text>
+          ) : null}
           {Array.isArray(row.accessory_tags) && row.accessory_tags.length > 0 ? (
-            <Text style={styles.memo}>액세서리: {(row.accessory_tags as string[]).join(' · ')}</Text>
+            <Text style={styles.memo}>
+              {isEn ? 'Accessories' : '액세서리'}:{' '}
+              {(row.accessory_tags as string[]).map((x) => optionLabel(isEn ? 'en' : 'ko', x)).join(' · ')}
+            </Text>
           ) : null}
           {row.memo ? <Text style={styles.memo}>{row.memo}</Text> : null}
 
-          <Text style={styles.section}>종합 만족도 (감상 기준)</Text>
+          <Text style={styles.section}>{isEn ? 'Overall satisfaction (from feedback)' : '종합 만족도 (감상 기준)'}</Text>
           {aggregateSat != null ? (
             <>
               <Text style={styles.satLine}>
-                평균 {aggregateSat % 1 === 0 ? String(aggregateSat) : aggregateSat.toFixed(1)} / 5
+                {isEn ? 'Average ' : '평균 '}
+                {aggregateSat % 1 === 0 ? String(aggregateSat) : aggregateSat.toFixed(1)} / 5
               </Text>
               {legacyOverall != null && !feedbacks.some((f) => f.overall_satisfaction != null) ? (
-                <Text style={styles.memo}>레거시 단일 평가가 반영되었습니다.</Text>
+                <Text style={styles.memo}>{isEn ? 'Legacy single rating is used.' : '레거시 단일 평가가 반영되었습니다.'}</Text>
               ) : null}
               <Text style={styles.stars}>
                 {'★'.repeat(Math.min(5, Math.round(aggregateSat)))}
@@ -252,12 +271,16 @@ export default function OutfitDetailScreen() {
               </Text>
             </>
           ) : (
-            <Text style={styles.memo}>감상 기록에서 만족도를 남기면 여기에 평균이 표시됩니다.</Text>
+            <Text style={styles.memo}>
+              {isEn
+                ? 'The average appears here after you record satisfaction in feedback.'
+                : '감상 기록에서 만족도를 남기면 여기에 평균이 표시됩니다.'}
+            </Text>
           )}
 
           {memoEntries.length > 0 ? (
             <>
-              <Text style={styles.section}>감상 메모</Text>
+              <Text style={styles.section}>{isEn ? 'Feedback notes' : '감상 메모'}</Text>
               {memoEntries.map((f) => (
                 <View key={f.id} style={styles.memoBlock}>
                   <Text style={styles.memoTime}>
@@ -276,11 +299,13 @@ export default function OutfitDetailScreen() {
           ) : null}
 
           <Pressable style={styles.outline} onPress={() => router.push(`/feeling/${id}`)}>
-            <Text style={styles.outlineTxt}>감상 기록 (이동·장소·체감·만족도)</Text>
+            <Text style={styles.outlineTxt}>
+              {isEn ? 'Write feedback (context, place, feeling, satisfaction)' : '감상 기록 (이동·장소·체감·만족도)'}
+            </Text>
           </Pressable>
 
           <Pressable style={styles.outline} onPress={() => router.push(`/outfit/edit/${id}`)}>
-            <Text style={styles.outlineTxt}>착장 수정</Text>
+            <Text style={styles.outlineTxt}>{isEn ? 'Edit outfit' : '착장 수정'}</Text>
           </Pressable>
 
           <Pressable
@@ -288,7 +313,7 @@ export default function OutfitDetailScreen() {
             onPress={confirmDelete}
             disabled={deleting}
           >
-            <Text style={styles.outlineTxtDanger}>{deleting ? '삭제 중…' : '착장 삭제'}</Text>
+            <Text style={styles.outlineTxtDanger}>{deleting ? (isEn ? 'Deleting…' : '삭제 중…') : isEn ? 'Delete outfit' : '착장 삭제'}</Text>
           </Pressable>
         </ScrollView>
       )}

@@ -1,3 +1,4 @@
+import { useLocale } from '@/context/LocaleContext';
 import { getSupabase } from '@/lib/supabase';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
@@ -6,6 +7,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 type Sens = 'low' | 'normal' | 'high' | '';
 
 export function UserEditPage() {
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -67,22 +70,22 @@ export function UserEditPage() {
       navigate(`/users/${id}`);
     },
     onError: (e: Error) => {
-      setFeedback(e.message || '저장에 실패했습니다.');
+      setFeedback(e.message || (isEn ? 'Failed to save.' : '저장에 실패했습니다.'));
     },
   });
 
-  if (!id) return <p className="error">잘못된 경로입니다.</p>;
-  if (q.isLoading) return <p className="muted">불러오는 중…</p>;
-  if (q.isError || !q.data) return <p className="error">사용자를 찾을 수 없습니다.</p>;
+  if (!id) return <p className="error">{isEn ? 'Invalid route.' : '잘못된 경로입니다.'}</p>;
+  if (q.isLoading) return <p className="muted">{isEn ? 'Loading…' : '불러오는 중…'}</p>;
+  if (q.isError || !q.data) return <p className="error">{isEn ? 'User not found.' : '사용자를 찾을 수 없습니다.'}</p>;
 
   return (
     <div>
       <p className="muted small">
         <Link to={`/users/${id}`} className="linkish">
-          ← 사용자 상세
+          {isEn ? '← User detail' : '← 사용자 상세'}
         </Link>
       </p>
-      <h1>사용자 편집</h1>
+      <h1>{isEn ? 'Edit user' : '사용자 편집'}</h1>
       <p className="muted mono small">{id}</p>
       <form
         className="form"
@@ -94,29 +97,29 @@ export function UserEditPage() {
         }}
       >
         <label>
-          닉네임
+          {isEn ? 'Nickname' : '닉네임'}
           <input value={nickname} onChange={(e) => setNickname(e.target.value)} autoComplete="off" />
         </label>
         <label>
-          기본 지역
+          {isEn ? 'Default region' : '기본 지역'}
           <input value={defaultRegion} onChange={(e) => setDefaultRegion(e.target.value)} autoComplete="off" />
         </label>
         <label>
-          추위 민감도
+          {isEn ? 'Cold sensitivity' : '추위 민감도'}
           <select value={cold} onChange={(e) => setCold(e.target.value as Sens)}>
-            <option value="">(없음)</option>
-            <option value="low">낮음</option>
-            <option value="normal">보통</option>
-            <option value="high">높음</option>
+            <option value="">{isEn ? '(none)' : '(없음)'}</option>
+            <option value="low">{isEn ? 'Low' : '낮음'}</option>
+            <option value="normal">{isEn ? 'Normal' : '보통'}</option>
+            <option value="high">{isEn ? 'High' : '높음'}</option>
           </select>
         </label>
         <label>
-          더위 민감도
+          {isEn ? 'Heat sensitivity' : '더위 민감도'}
           <select value={heat} onChange={(e) => setHeat(e.target.value as Sens)}>
-            <option value="">(없음)</option>
-            <option value="low">낮음</option>
-            <option value="normal">보통</option>
-            <option value="high">높음</option>
+            <option value="">{isEn ? '(none)' : '(없음)'}</option>
+            <option value="low">{isEn ? 'Low' : '낮음'}</option>
+            <option value="normal">{isEn ? 'Normal' : '보통'}</option>
+            <option value="high">{isEn ? 'High' : '높음'}</option>
           </select>
         </label>
         <label style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
@@ -125,7 +128,7 @@ export function UserEditPage() {
             checked={onboardingCompleted}
             onChange={(e) => setOnboardingCompleted(e.target.checked)}
           />
-          온보딩 완료
+          {isEn ? 'Onboarding done' : '온보딩 완료'}
         </label>
         <label style={{ flexDirection: 'row', alignItems: 'center', gap: '0.5rem' }}>
           <input
@@ -133,11 +136,11 @@ export function UserEditPage() {
             checked={accountDisabled}
             onChange={(e) => setAccountDisabled(e.target.checked)}
           />
-          계정 비활성 (이용 제한)
+          {isEn ? 'Disable account (restrict access)' : '계정 비활성 (이용 제한)'}
         </label>
-        {feedback ? <p className={feedback === '저장했습니다.' ? 'muted' : 'error'}>{feedback}</p> : null}
+        {feedback ? <p className="error">{feedback}</p> : null}
         <button type="submit" disabled={save.isPending}>
-          {save.isPending ? '저장 중…' : '저장'}
+          {save.isPending ? (isEn ? 'Saving…' : '저장 중…') : isEn ? 'Save' : '저장'}
         </button>
       </form>
     </div>

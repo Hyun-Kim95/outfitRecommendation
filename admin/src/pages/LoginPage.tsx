@@ -1,3 +1,4 @@
+import { useLocale } from '@/context/LocaleContext';
 import { useSession } from '@/context/SessionContext';
 import { useTheme } from '@/context/ThemeContext';
 import { getSupabase } from '@/lib/supabase';
@@ -5,6 +6,8 @@ import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 export function LoginPage() {
+  const { locale, setLocale } = useLocale();
+  const isEn = locale === 'en';
   const { ready, configured, session, profile, profileLoading, signIn } = useSession();
   const { preference, setPreference } = useTheme();
   const loc = useLocation();
@@ -17,10 +20,11 @@ export function LoginPage() {
   if (!configured) {
     return (
       <div className="card narrow">
-        <h1>환경 변수</h1>
+        <h1>{isEn ? 'Environment variables' : '환경 변수'}</h1>
         <p className="muted">
-          <code>VITE_SUPABASE_URL</code>, <code>VITE_SUPABASE_ANON_KEY</code> 를 <code>.env</code>에 설정한 뒤
-          개발 서버를 재시작하세요.
+          {isEn
+            ? <><code>VITE_SUPABASE_URL</code>, <code>VITE_SUPABASE_ANON_KEY</code> in <code>.env</code> then restart the dev server.</>
+            : <><code>VITE_SUPABASE_URL</code>, <code>VITE_SUPABASE_ANON_KEY</code> 를 <code>.env</code>에 설정한 뒤 개발 서버를 재시작하세요.</>}
         </p>
       </div>
     );
@@ -46,7 +50,7 @@ export function LoginPage() {
       data: { session: s },
     } = await sb.auth.getSession();
     if (!s?.user) {
-      setErr('세션을 만들지 못했습니다.');
+      setErr(isEn ? 'Failed to create session.' : '세션을 만들지 못했습니다.');
       return;
     }
     const { data: p } = await sb.from('profiles').select('is_admin').eq('id', s.user.id).maybeSingle();
@@ -59,29 +63,39 @@ export function LoginPage() {
   return (
     <div className="card narrow">
       <div className="theme-picker login-theme">
-        <span className="muted small">테마</span>
+        <span className="muted small">{isEn ? 'Theme' : '테마'}</span>
         <div className="theme-segments">
           <button
             type="button"
             className={`theme-chip${preference === 'light' ? ' active' : ''}`}
             onClick={() => setPreference('light')}
           >
-            라이트
+            {isEn ? 'Light' : '라이트'}
           </button>
           <button
             type="button"
             className={`theme-chip${preference === 'dark' ? ' active' : ''}`}
             onClick={() => setPreference('dark')}
           >
-            다크
+            {isEn ? 'Dark' : '다크'}
           </button>
         </div>
       </div>
-      <h1>관리자 로그인</h1>
-      <p className="muted small">관리자로 지정된 계정만 대시보드에 접근할 수 있습니다.</p>
+      <div className="theme-picker" role="group" aria-label={isEn ? 'Language' : '언어'}>
+        <span className="muted small">{isEn ? 'Language' : '언어'}</span>
+        <div className="theme-segments">
+          <button type="button" className={`theme-chip${locale === 'ko' ? ' active' : ''}`} onClick={() => setLocale('ko')}>
+            {isEn ? 'Korean' : '한국어'}
+          </button>
+          <button type="button" className={`theme-chip${locale === 'en' ? ' active' : ''}`} onClick={() => setLocale('en')}>
+            {isEn ? 'English' : '영어'}
+          </button>
+        </div>
+      </div>
+      <h1>{isEn ? 'Admin login' : '관리자 로그인'}</h1>
       <form onSubmit={onSubmit} className="form">
         <label>
-          이메일
+          {isEn ? 'Email' : '이메일'}
           <input
             type="email"
             autoComplete="username"
@@ -91,7 +105,7 @@ export function LoginPage() {
           />
         </label>
         <label>
-          비밀번호
+          {isEn ? 'Password' : '비밀번호'}
           <input
             type="password"
             autoComplete="current-password"
@@ -102,7 +116,7 @@ export function LoginPage() {
         </label>
         {err ? <p className="error">{err}</p> : null}
         <button type="submit" disabled={busy}>
-          {busy ? '로그인 중…' : '로그인'}
+          {busy ? (isEn ? 'Signing in…' : '로그인 중…') : isEn ? 'Sign in' : '로그인'}
         </button>
       </form>
     </div>

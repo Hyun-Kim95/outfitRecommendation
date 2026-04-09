@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getSupabase } from '@/lib/supabase';
 import type { ThemeColors } from '@/lib/theme-colors';
@@ -22,9 +23,9 @@ type TicketRow = {
   created_at: string;
 };
 
-function statusText(status: string): string {
-  if (status === 'answered') return '답변 완료';
-  return '답변 대기';
+function statusText(status: string, isEn: boolean): string {
+  if (status === 'answered') return isEn ? 'Answered' : '답변 완료';
+  return isEn ? 'Waiting' : '답변 대기';
 }
 
 function createStyles(c: ThemeColors) {
@@ -57,6 +58,8 @@ function createStyles(c: ThemeColors) {
 
 export default function SupportInquiryListScreen() {
   const { session } = useAuth();
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [rows, setRows] = useState<TicketRow[]>([]);
@@ -102,7 +105,7 @@ export default function SupportInquiryListScreen() {
   if (!session?.user) {
     return (
       <View style={styles.center}>
-        <Text style={styles.muted}>로그인 후 문의 내역을 볼 수 있습니다.</Text>
+        <Text style={styles.muted}>{isEn ? 'Sign in to view inquiry history.' : '로그인 후 문의 내역을 볼 수 있습니다.'}</Text>
       </View>
     );
   }
@@ -126,15 +129,17 @@ export default function SupportInquiryListScreen() {
       ) : null}
       {rows.length === 0 ? (
         <Text style={styles.muted}>
-          아직 문의가 없습니다. 화면 우측 상단 「새 문의」로 운영진에게 글을 남길 수 있습니다.
+          {isEn
+            ? 'No inquiries yet. Tap "New" in the top-right to send one to the admin team.'
+            : '아직 문의가 없습니다. 화면 우측 상단 「새 문의」로 운영진에게 글을 남길 수 있습니다.'}
         </Text>
       ) : (
         rows.map((r) => (
           <Pressable key={r.id} style={styles.row} onPress={() => router.push(`/my-inquiry/${r.id}`)}>
             <Text style={styles.subject}>{r.subject}</Text>
-            <Text style={styles.meta}>{new Date(r.created_at).toLocaleString('ko-KR')}</Text>
+            <Text style={styles.meta}>{new Date(r.created_at).toLocaleString(isEn ? 'en-US' : 'ko-KR')}</Text>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{statusText(r.status)}</Text>
+              <Text style={styles.badgeText}>{statusText(r.status, isEn)}</Text>
             </View>
           </Pressable>
         ))

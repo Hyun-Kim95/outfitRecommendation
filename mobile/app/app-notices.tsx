@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getSupabase } from '@/lib/supabase';
 import type { ThemeColors } from '@/lib/theme-colors';
@@ -17,7 +18,10 @@ import {
 } from 'react-native';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
+  const isFabric = !!(globalThis as { nativeFabricUIManager?: unknown }).nativeFabricUIManager;
+  if (!isFabric) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+  }
 }
 
 type Notice = {
@@ -61,6 +65,8 @@ function createStyles(c: ThemeColors) {
 
 export default function AppNoticesScreen() {
   const { session } = useAuth();
+  const { locale } = useLocale();
+  const isEn = locale === 'en';
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [items, setItems] = useState<Notice[]>([]);
@@ -109,7 +115,7 @@ export default function AppNoticesScreen() {
   if (!session?.user) {
     return (
       <View style={styles.center}>
-        <Text style={styles.muted}>로그인 후 공지를 볼 수 있습니다.</Text>
+        <Text style={styles.muted}>{isEn ? 'Sign in to view notices.' : '로그인 후 공지를 볼 수 있습니다.'}</Text>
       </View>
     );
   }
@@ -132,7 +138,7 @@ export default function AppNoticesScreen() {
         <Text style={[styles.muted, { color: colors.destructive, marginBottom: 12 }]}>{error}</Text>
       ) : null}
       {items.length === 0 ? (
-        <Text style={styles.muted}>표시 중인 공지가 없습니다.</Text>
+        <Text style={styles.muted}>{isEn ? 'No active notices.' : '표시 중인 공지가 없습니다.'}</Text>
       ) : (
         items.map((n) => {
           const isOpen = !!expanded[n.id];
@@ -147,7 +153,10 @@ export default function AppNoticesScreen() {
                 <View style={styles.headerTextWrap}>
                   <Text style={styles.title}>{n.title}</Text>
                   <Text style={styles.meta}>
-                    게시 {new Date(n.starts_at).toLocaleDateString('ko-KR', { dateStyle: 'medium' })}
+                    {isEn ? 'Posted ' : '게시 '}
+                    {new Date(n.starts_at).toLocaleDateString(locale === 'en' ? 'en-US' : 'ko-KR', {
+                      dateStyle: 'medium',
+                    })}
                   </Text>
                 </View>
                 <Text style={styles.chevron}>{isOpen ? '▲' : '▼'}</Text>

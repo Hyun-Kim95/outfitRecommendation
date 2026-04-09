@@ -1,3 +1,5 @@
+import type { Locale } from '@/context/LocaleContext';
+
 /** DB 영문 값 → 관리자 화면 한글 */
 
 export function sensitivityKo(v: string | null | undefined): string {
@@ -18,4 +20,16 @@ export function ticketStatusKo(status: string): string {
     closed: '종료',
   };
   return m[status] ?? status;
+}
+
+const TICKET_STATUS_EN: Record<string, string> = {
+  open: 'Open',
+  in_progress: 'In progress',
+  answered: 'Answered',
+  closed: 'Closed',
+};
+
+export function ticketStatusLabel(status: string, locale: Locale): string {
+  if (locale === 'en') return TICKET_STATUS_EN[status] ?? status.replace(/_/g, ' ');
+  return ticketStatusKo(status);
 }
