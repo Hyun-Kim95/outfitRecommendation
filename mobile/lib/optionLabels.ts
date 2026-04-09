@@ -96,6 +96,12 @@ const KO_TO_EN: Record<string, string> = {
   '결혼식·행사': 'Wedding/Event',
   '등산·야외': 'Hiking/Outdoor',
   재택: 'Work from home',
+  // default transports (profile; 버스 등은 위와 동일 키)
+  도보: 'Walking',
+  지하철: 'Subway',
+  자가용: 'Car',
+  자전거: 'Bicycle',
+  킥보드: 'E-scooter',
   // activity/indoor-outdoor
   낮음: 'Low',
   높음: 'High',
@@ -142,6 +148,13 @@ const KO_TO_EN: Record<string, string> = {
   중간: 'Middle',
   '귀가 후': 'After returning home',
   추가: 'More',
+  // outfit log tabs (UI only)
+  상의: 'Top',
+  하의: 'Bottom',
+  아우터: 'Outer',
+  신발: 'Shoes',
+  '상황·메모': 'Context & memo',
+  감상: 'Feedback',
 };
 
 export function optionLabel(locale: Locale, value: string): string {

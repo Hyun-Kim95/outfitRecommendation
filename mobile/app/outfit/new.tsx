@@ -339,7 +339,7 @@ export default function NewOutfitScreen() {
         {(Object.keys(TAB_LABELS) as OutfitTab[]).map((k) => (
           <Pressable key={k} style={[styles.tab, tab === k && styles.tabOn]} onPress={() => setTab(k)}>
             <Text style={[styles.tabTxt, tab === k && styles.tabTxtOn]}>
-              {isEn ? optionLabel('en', TAB_LABELS[k]) : TAB_LABELS[k]}
+              {optionLabel(locale, TAB_LABELS[k])}
             </Text>
           </Pressable>
         ))}
@@ -460,7 +460,7 @@ export default function NewOutfitScreen() {
             multiline
             value={memo}
             onChangeText={setMemo}
-            placeholder="짧게 적어도 됩니다"
+            placeholder={isEn ? 'Optional short note' : '짧게 적어도 됩니다'}
             placeholderTextColor={colors.mutedForeground}
           />
         </>

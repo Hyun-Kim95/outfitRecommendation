@@ -92,6 +92,22 @@ export const REGION_LABEL_EN: Record<string, string> = {
   namyangju: 'Namyangju',
 };
 
+/** `default_region` 문자열(한글 프리셋 라벨을 ` · `로 연결) → 영어 표기 */
+const PRESET_KO_LABEL_TO_EN: Readonly<Record<string, string>> = Object.freeze(
+  Object.fromEntries(PRESET_REGIONS.map((r) => [r.label, REGION_LABEL_EN[r.slug] ?? r.label]))
+);
+
+export function formatDefaultRegionForLocale(locale: Locale, raw: string | null | undefined): string {
+  if (!raw?.trim()) return '';
+  if (locale !== 'en') return raw;
+  return raw
+    .split(/\s*·\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((seg) => PRESET_KO_LABEL_TO_EN[seg] ?? seg)
+    .join(' · ');
+}
+
 export function presetRegionDisplayLabel(p: PresetRegion, locale: Locale): string {
   if (locale === 'ko') return p.label;
   return REGION_LABEL_EN[p.slug] ?? p.label;

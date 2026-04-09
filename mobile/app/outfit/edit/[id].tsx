@@ -425,13 +425,13 @@ export default function EditOutfitScreen() {
       <Text style={styles.h}>{isEn ? 'Indoor/Outdoor' : '실내/야외'}</Text>
       <ChipRow styles={styles} options={[...INDOOR_OUTDOOR_OPTIONS]} value={io} onChange={setIo} locale={locale} />
 
-      <Text style={styles.h}>메모</Text>
+      <Text style={styles.h}>{isEn ? 'Memo (optional)' : '메모'}</Text>
       <TextInput
         style={styles.memo}
         multiline
         value={memo}
         onChangeText={setMemo}
-        placeholder="선택"
+        placeholder={isEn ? 'Optional note' : '선택'}
         placeholderTextColor={colors.mutedForeground}
       />
 

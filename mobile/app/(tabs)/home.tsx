@@ -362,7 +362,7 @@ export default function HomeScreen() {
 
       const past = outfits.filter((o) => o.worn_on !== today);
 
-      const scored = past.map((o) => ({ o, ...scoreRecommendation(o, vec) }));
+      const scored = past.map((o) => ({ o, ...scoreRecommendation(o, vec, locale) }));
       scored.sort((a, b) => b.score - a.score);
 
       const picks: typeof scored = [];

@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { useLocale } from '@/contexts/LocaleContext';
+import { useLocale, type Locale } from '@/contexts/LocaleContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { FEEDBACK_PLACE_OPTIONS, FEEDBACK_TIME_OPTIONS, FEELING_OPTIONS, IMPROVEMENT_TAGS } from '@/lib/options';
 import { optionLabel } from '@/lib/optionLabels';
@@ -132,23 +132,37 @@ function formatFeedbackWhen(r: FeedbackRow): string {
   }
 }
 
-function timingLabelFromRow(r: FeedbackRow): string {
-  if (r.timing_type === 'first') return TIMING_LABELS.first;
-  if (r.timing_type === 'middle') return TIMING_LABELS.middle;
-  if (r.timing_type === 'last') return TIMING_LABELS.last;
-  if (r.time_period) return r.time_period;
+function timingLabelFromRow(r: FeedbackRow, locale: Locale): string {
+  if (r.timing_type === 'first') return optionLabel(locale, TIMING_LABELS.first);
+  if (r.timing_type === 'middle') return optionLabel(locale, TIMING_LABELS.middle);
+  if (r.timing_type === 'last') return optionLabel(locale, TIMING_LABELS.last);
+  if (r.time_period) return optionLabel(locale, r.time_period);
   return '';
 }
 
-function summarizeFeedbackLine(r: FeedbackRow): string {
+function summarizeFeedbackLine(r: FeedbackRow, locale: Locale): string {
   const parts: string[] = [];
-  const t = timingLabelFromRow(r);
+  const t = timingLabelFromRow(r, locale);
   if (t) parts.push(t);
-  if (r.context_mode === 'transit' && r.transport_type) parts.push(`이동: ${r.transport_type}`);
-  if (r.context_mode === 'place' && r.place_singular) parts.push(r.place_singular);
-  if (r.feeling_type) parts.push(r.feeling_type);
-  if (r.overall_satisfaction != null) parts.push(`만족 ${r.overall_satisfaction}/5`);
-  return parts.join(' · ') || '감상';
+  if (r.context_mode === 'transit' && r.transport_type) {
+    parts.push(
+      locale === 'en'
+        ? `Transit: ${optionLabel(locale, r.transport_type)}`
+        : `이동: ${r.transport_type}`
+    );
+  }
+  if (r.context_mode === 'place' && r.place_singular) {
+    parts.push(optionLabel(locale, r.place_singular));
+  }
+  if (r.feeling_type) parts.push(optionLabel(locale, r.feeling_type));
+  if (r.overall_satisfaction != null) {
+    parts.push(
+      locale === 'en'
+        ? `Satisfaction ${r.overall_satisfaction}/5`
+        : `만족 ${r.overall_satisfaction}/5`
+    );
+  }
+  return parts.join(' · ') || optionLabel(locale, '감상');
 }
 
 function improvementListFromRow(r: FeedbackRow): string[] {
@@ -435,7 +449,7 @@ export default function FeelingScreen() {
         history.map((r) => (
           <View key={r.id} style={styles.card}>
             <Text style={styles.cardMeta}>{formatFeedbackWhen(r)}</Text>
-            <Text style={styles.cardBody}>{summarizeFeedbackLine(r)}</Text>
+            <Text style={styles.cardBody}>{summarizeFeedbackLine(r, locale)}</Text>
             {r.note ? <Text style={[styles.hint, { marginTop: 6 }]}>{r.note}</Text> : null}
             <View style={styles.cardActions}>
               <Pressable onPress={() => startEdit(r)} disabled={busy}>
@@ -473,7 +487,7 @@ export default function FeelingScreen() {
               }}
             >
               <Text style={[styles.timingBigTxt, timing === slot && styles.timingBigTxtOn]}>
-                {isEn ? optionLabel('en', TIMING_LABELS[slot]) : TIMING_LABELS[slot]}
+                {optionLabel(locale, TIMING_LABELS[slot])}
               </Text>
             </Pressable>
           ))}

@@ -97,7 +97,7 @@ export default function SimilarDaysScreen() {
 
       const outfits = await fetchOutfitsWithRelations(user.id);
       const past = outfits.filter((o) => o.worn_on !== today);
-      const sorted = sortOutfits(past, v, sort);
+      const sorted = sortOutfits(past, v, sort, locale);
       setRows(sorted);
     } catch (e) {
       console.warn(e);
@@ -105,7 +105,7 @@ export default function SimilarDaysScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user, profile, sort]);
+  }, [user, profile, sort, locale]);
 
   useFocusEffect(
     useCallback(() => {

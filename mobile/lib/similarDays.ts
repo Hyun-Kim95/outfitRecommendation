@@ -1,3 +1,4 @@
+import type { Locale } from '@/contexts/LocaleContext';
 import {
   averageFeedbackSatisfaction,
   effectiveOutfitSatisfaction,
@@ -99,7 +100,8 @@ export function similarityScore(o: OutfitWithRelations, t: TodayVector): number 
 
 export function scoreRecommendation(
   o: OutfitWithRelations,
-  t: TodayVector
+  t: TodayVector,
+  locale: Locale = 'ko'
 ): { score: number; similarity: number; warning: boolean; reason: string } {
   const sim = similarityScore(o, t);
   const r = o.rating_logs;
@@ -117,12 +119,21 @@ export function scoreRecommendation(
   const warning = (eff ?? 5) <= 2 || improvements >= 3;
 
   const avgLabel =
-    fbAvg != null
-      ? `${fbAvg}(감상 평균)`
-      : r?.overall_rating != null
-        ? `${r.overall_rating}(레거시)`
-        : '미입력';
-  const reason = `유사 날씨·상황에서 만족도 ${avgLabel}점 기록`;
+    locale === 'en'
+      ? fbAvg != null
+        ? `${fbAvg}/5 (feedback avg)`
+        : r?.overall_rating != null
+          ? `${r.overall_rating}/5 (legacy)`
+          : 'Not entered'
+      : fbAvg != null
+        ? `${fbAvg}(감상 평균)`
+        : r?.overall_rating != null
+          ? `${r.overall_rating}(레거시)`
+          : '미입력';
+  const reason =
+    locale === 'en'
+      ? `Similar weather & context — satisfaction ${avgLabel}`
+      : `유사 날씨·상황에서 만족도 ${avgLabel}점 기록`;
 
   return { score, similarity: sim, warning, reason };
 }
@@ -130,10 +141,11 @@ export function scoreRecommendation(
 export function sortOutfits(
   items: OutfitWithRelations[],
   t: TodayVector,
-  sort: SimilarSort
+  sort: SimilarSort,
+  locale: Locale = 'ko'
 ): { item: OutfitWithRelations; similarity: number; score: number; warning: boolean }[] {
   const enriched = items.map((item) => {
-    const { score, similarity, warning } = scoreRecommendation(item, t);
+    const { score, similarity, warning } = scoreRecommendation(item, t, locale);
     return { item, similarity, score, warning };
   });
 
