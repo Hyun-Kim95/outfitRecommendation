@@ -9,7 +9,7 @@
 | [`mobile/`](mobile/) | Expo(React Native) 모바일 앱 — 인증, 온보딩, 홈·착장 기록, 감상, 히스토리, 비슷한 날 등 |
 | [`admin/`](admin/) | Vite + React 관리자 콘솔 — 로그인, KPI·사용자·착장 조회(읽기 중심 MVP) |
 | [`supabase/migrations/`](supabase/migrations/) | DB 스키마·RLS 마이그레이션 SQL |
-| [`docs/`](docs/) | PRD, UI 명세, 프론트/백엔드 계획, 게이트 체크리스트 |
+| [`docs/`](docs/) | 요구·계획(`requirements/`), 화면 명세(`design/`), QA·게이트(`qa/`) 등 — [docs/README.md](docs/README.md) 참고 |
 | [`reports/`](reports/) | 테스트 리포트, 리뷰, 릴리즈 노트 |
 
 ## 요구 사항
@@ -47,9 +47,9 @@ cd mobile && npm run typecheck
 cd admin && npm run build
 ```
 
-상세 검증·게이트는 [`docs/gate-checklist.md`](docs/gate-checklist.md), [`reports/test-report.md`](reports/test-report.md)를 참고하세요.
+상세 검증·게이트는 [`docs/qa/gate-checklist.md`](docs/qa/gate-checklist.md), [`reports/test-report.md`](reports/test-report.md)를 참고하세요.
 
 ## 문서
 
-- 제품 요약: [`docs/prd.md`](docs/prd.md)
-- 워크플로(리서치 → PRD → 계획 → 구현 → 테스트 → 리뷰 → 게이트): [`.cursor/rules/00-workflow.mdc`](.cursor/rules/00-workflow.mdc)
+- 제품 요약: [`docs/requirements/prd.md`](docs/requirements/prd.md)
+- 워크플로·역할 분담: [`AGENTS.md`](AGENTS.md), 게이트 기준: [`.cursor/rules/60-delivery-gates.mdc`](.cursor/rules/60-delivery-gates.mdc)

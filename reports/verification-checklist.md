@@ -1,6 +1,6 @@
 # 화면별 검증 체크리스트
 
-**목적**: 모바일·관리자 주요 흐름을 빠짐없이 확인하고, [test-report.md](test-report.md)·[gate-checklist.md](../docs/gate-checklist.md) 갱신 시 근거로 사용합니다.
+**목적**: 모바일·관리자 주요 흐름을 빠짐없이 확인하고, [test-report.md](test-report.md)·[gate-checklist.md](../docs/qa/gate-checklist.md) 갱신 시 근거로 사용합니다.
 
 ---
 
@@ -107,7 +107,7 @@
 수동 검증을 마치면:
 
 1. [test-report.md](test-report.md) §4~§9·§16에 **실행 일시·결과** 요약
-2. [gate-checklist.md](../docs/gate-checklist.md) 해당 체크박스 갱신
+2. [gate-checklist.md](../docs/qa/gate-checklist.md) 해당 체크박스 갱신
 3. (선택) [review.md](review.md) 검토일·코멘트
 
 ---

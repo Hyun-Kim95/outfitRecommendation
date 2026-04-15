@@ -11,7 +11,7 @@
 - [supabase/migrations/20260408210000_admin_inquiries_notices_account_disabled.sql](../supabase/migrations/20260408210000_admin_inquiries_notices_account_disabled.sql)
 - [admin/src/App.tsx](../admin/src/App.tsx), 신규 페이지 `UserDetailPage`, `UserEditPage`, `OutfitDetailPage`, `InquiriesPage`, `InquiryDetailPage`, `NoticesPage`, `NoticeFormPage`, `RequireAdmin` 등
 - [mobile/app/support-inquiry.tsx](../mobile/app/support-inquiry.tsx), [mobile/contexts/AuthContext.tsx](../mobile/contexts/AuthContext.tsx)
-- 문서: `docs/prd.md`, `docs/backend-plan.md`, `docs/frontend-plan.md`, `docs/ui-spec.md`, `docs/research.md`
+- 문서: `docs/requirements/prd.md`, `docs/requirements/backend-plan.md`, `docs/requirements/frontend-plan.md`, `docs/design/ui-spec.md`, `docs/requirements/research.md`
 
 ## 배포 전 필수
 
@@ -23,4 +23,4 @@
 
 - 테스트: [reports/test-report.md](test-report.md) — **PARTIAL**(빌드·tsc 통과, DB E2E 미검증)
 - 리뷰: [reports/review.md](review.md)
-- 체크리스트: [docs/gate-checklist.md](../docs/gate-checklist.md)
+- 체크리스트: [docs/qa/gate-checklist.md](../docs/qa/gate-checklist.md)

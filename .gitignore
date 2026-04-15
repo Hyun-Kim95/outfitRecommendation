@@ -20,3 +20,8 @@ Thumbs.db
 
 # 에디터 Local History 등이 워크스페이스 안에 생기면(스냅샷에 키 포함 가능)
 .history/
+
+# 로컬 옵시디언 동기·훅(머신별 경로·일회 부트스트랩)
+.obsidian-ingest.json
+_config/obsidian-repos.json
+.cursor/state/

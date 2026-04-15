@@ -2,16 +2,16 @@
 
 ## 1. 기능 / 범위
 - 기능: 관리자 웹 고도화(사용자·착장 상세/편집, 문의, 공지, 계정 비활성), Supabase 마이그레이션(RLS·트리거), 모바일 문의 작성·비활성 계정 처리
-- 관련 PRD: [docs/prd.md](../docs/prd.md)
-- 관련 UI 명세: [docs/ui-spec.md](../docs/ui-spec.md)
-- 관련 프론트엔드 계획: [docs/frontend-plan.md](../docs/frontend-plan.md)
-- 관련 백엔드 계획: [docs/backend-plan.md](../docs/backend-plan.md)
+- 관련 PRD: [docs/requirements/prd.md](../docs/requirements/prd.md)
+- 관련 UI 명세: [docs/design/ui-spec.md](../docs/design/ui-spec.md)
+- 관련 프론트엔드 계획: [docs/requirements/frontend-plan.md](../docs/requirements/frontend-plan.md)
+- 관련 백엔드 계획: [docs/requirements/backend-plan.md](../docs/requirements/backend-plan.md)
 
 ## 2. 변경 파일 / 영향 범위
 - `supabase/migrations/20260408210000_admin_inquiries_notices_account_disabled.sql` — `account_disabled`, 문의·공지 테이블, 관리자 UPDATE/트리거
 - `admin/src/*` — 신규 페이지·라우트·네비·대시보드 KPI, `RequireAdmin` 비활성 계정 처리
 - `mobile/app/support-inquiry.tsx`, `mobile/contexts/AuthContext.tsx`, `mobile/app/(tabs)/settings.tsx`, `mobile/lib/database.types.ts`, `mobile/app/_layout.tsx`
-- 문서: `docs/prd.md`, `docs/backend-plan.md`, `docs/frontend-plan.md`, `docs/ui-spec.md`, `docs/research.md`
+- 문서: `docs/requirements/prd.md`, `docs/requirements/backend-plan.md`, `docs/requirements/frontend-plan.md`, `docs/design/ui-spec.md`, `docs/requirements/research.md`
 
 ## 3. 테스트 환경
 - 워크트리: `d:\cursor\outFitRecommendation`
@@ -66,7 +66,7 @@
 
 ## 15. 권장 다음 액션
 1. 스테이징에 마이그레이션 적용 후 §6 체크
-2. [docs/gate-checklist.md](../docs/gate-checklist.md)와 동기화
+2. [docs/qa/gate-checklist.md](../docs/qa/gate-checklist.md)와 동기화
 
 ## 16. UI / UX 확인 사항
 - 관리자: 신규 화면 제목·한글 라벨·빈 목록 문구·폼 검증 메시지 코드 반영 — **실브라우저 미확인**
