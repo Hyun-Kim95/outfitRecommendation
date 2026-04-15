@@ -13,17 +13,28 @@ function Ensure-Directory {
     }
 }
 
+function Escape-YamlDoubleQuotedValue {
+    param([string]$Text)
+    if ($null -eq $Text) {
+        return ''
+    }
+    $clean = ($Text -replace "`r`n", ' ' -replace "`r", ' ' -replace "`n", ' ')
+    return (($clean -replace '\\', '\\\\') -replace '"', '\"')
+}
+
 function Write-ProjectDocIndex {
     param(
         [string]$TargetDocsRoot,
         [string]$Slug,
-        [string]$RepoPath
+        [string]$RepoPath,
+        [string]$DisplayName = ""
     )
 
     $updatedAt = (Get-Date).ToString("s")
     $safeRepoPath = $RepoPath.Replace("\", "\\")
     $indexPath = Join-Path $TargetDocsRoot "_project-doc-index.md"
     $readmePath = Join-Path $TargetDocsRoot "README.md"
+    $hubTitle = if (-not [string]::IsNullOrWhiteSpace($DisplayName)) { $DisplayName } else { $Slug }
 
     $dashProjects = "$Slug/docs/obsidian/dashboards/projects-overview"
     $dashJournal = "$Slug/docs/obsidian/dashboards/commit-journal-overview"
@@ -38,26 +49,29 @@ function Write-ProjectDocIndex {
         $links += "- '[[" + $Slug + "/docs/README]]'"
     }
 
-    $content = @(
-        "---"
-        "type: project-doc"
-        "project: $Slug"
-        "source_repo: $Slug"
-        "source_repo_path: $safeRepoPath"
-        "updated_at: $updatedAt"
-        "tags: [project-doc, vault-sync, hub]"
-        "links:"
-    )
+    $content = New-Object System.Collections.Generic.List[string]
+    $null = $content.Add('---')
+    $null = $content.Add('type: project-doc')
+    $null = $content.Add("project: $Slug")
+    if (-not [string]::IsNullOrWhiteSpace($DisplayName)) {
+        $dq = Escape-YamlDoubleQuotedValue -Text $DisplayName
+        $null = $content.Add('display_name: "' + $dq + '"')
+    }
+    $null = $content.Add("source_repo: $Slug")
+    $null = $content.Add("source_repo_path: $safeRepoPath")
+    $null = $content.Add("updated_at: $updatedAt")
+    $null = $content.Add('tags: [project-doc, vault-sync, hub]')
+    $null = $content.Add('links:')
 
     foreach ($link in $links) {
-        $content += $link
+        $null = $content.Add($link)
     }
 
     # Avoid `[[...]]` inside double-quoted literals (PowerShell type-parser); build lines with concatenation.
     $body = New-Object System.Collections.Generic.List[string]
     $null = $body.Add('---')
     $null = $body.Add('')
-    $null = $body.Add("# $Slug - project docs hub (vault sync)")
+    $null = $body.Add("# $hubTitle - project docs hub (vault sync)")
     $null = $body.Add('')
     $null = $body.Add('Synced `docs` from the repo into this vault folder. Use dashboards below for Dataview.')
     $null = $body.Add('')
@@ -79,7 +93,7 @@ function Write-ProjectDocIndex {
     $null = $body.Add("- Last synced: $updatedAt")
 
     foreach ($line in $body) {
-        $content += $line
+        $null = $content.Add($line)
     }
 
     Set-Content -LiteralPath $indexPath -Value ($content -join "`r`n") -Encoding UTF8
@@ -178,9 +192,10 @@ function Get-AutoRepositoryEntry {
     $slug = Split-Path -Path $repoPath -Leaf
     $docsPaths = @("docs")
 
+    $displayName = ""
     $ingestConfigPath = Join-Path $repoPath ".obsidian-ingest.json"
     if (Test-Path -LiteralPath $ingestConfigPath) {
-        $repoConfig = Get-Content -LiteralPath $ingestConfigPath -Raw | ConvertFrom-Json
+        $repoConfig = Get-Content -LiteralPath $ingestConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
         if ($repoConfig.slug) {
             $slug = [string]$repoConfig.slug
         }
@@ -190,12 +205,16 @@ function Get-AutoRepositoryEntry {
         if ($repoConfig.docsPaths -and $repoConfig.docsPaths.Count -gt 0) {
             $docsPaths = @($repoConfig.docsPaths)
         }
+        if ($repoConfig.displayName) {
+            $displayName = [string]$repoConfig.displayName
+        }
     }
 
     return @([pscustomobject]@{
-        path = $repoPath
-        slug = $slug
-        docsPaths = $docsPaths
+        path         = $repoPath
+        slug         = $slug
+        docsPaths    = $docsPaths
+        displayName  = $displayName
     })
 }
 
@@ -226,6 +245,10 @@ foreach ($repo in $repositories) {
     $repoPath = [string]$repo.path
     $slug = [string]$repo.slug
     $docsPaths = Resolve-DocsPaths -DocsPaths $repo.docsPaths
+    $displayName = ""
+    if ($null -ne $repo.displayName -and -not [string]::IsNullOrWhiteSpace([string]$repo.displayName)) {
+        $displayName = [string]$repo.displayName
+    }
 
     if (-not (Test-Path -LiteralPath $repoPath)) {
         Write-Warning "Repo path not found, skipping: $repoPath"
@@ -273,7 +296,7 @@ foreach ($repo in $repositories) {
         Write-Host "Synced: $sourcePath -> $targetPath"
     }
 
-    Write-ProjectDocIndex -TargetDocsRoot $targetDocsRoot -Slug $slug -RepoPath $repoPath
+    Write-ProjectDocIndex -TargetDocsRoot $targetDocsRoot -Slug $slug -RepoPath $repoPath -DisplayName $displayName
     Write-Host "Indexed: $targetDocsRoot"
 }
 

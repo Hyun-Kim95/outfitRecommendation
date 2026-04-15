@@ -18,6 +18,8 @@
 
 볼트 경로·슬러그는 레포 루트의 `.obsidian-ingest.json`으로 맞춘다. 이 파일은 **저장하지 않아도 되며**(`.gitignore`에 포함), `sync-docs.ps1` 실행 시 Git 루트 폴더명 기준으로 **없으면 자동 생성**되고, `slug`가 폴더명과 다르면 **폴더명에 맞게 보정**된다. 수동 예시는 `docs/obsidian/obsidian-ingest.example.json`을 참고한다.
 
+**`displayName`(선택):** 여러 레포를 한 볼트에 두면 `_project-doc-index` 제목·Dataview `name` 컬럼이 모두 `slug`로만 보여 헷갈릴 수 있다. 짧은 한글/영문 표시 이름을 넣으면 `_project-doc-index`의 H1·프론트매터 `display_name`, 커밋 저널·`normalize-doc-frontmatter`가 만드는 lane 문서에도 같은 필드가 들어가 대시보드에서 `default(display_name, project)`로 구분하기 쉽다.
+
 ## 문서를 옵시디언 노트 형태로 (frontmatter + Vault 링크)
 
 `docs/requirements`, `docs/qa`, `docs/design`, `docs/decisions`, `docs/changelog` 아래 `.md` 중 **맨 앞이 `---`가 아닌 파일**에 공통 YAML(`type`, `project`, `doc_lane`, `updated_at`, `tags`)과 맨 아래 `## Vault` 위키링크 블록을 추가한다.

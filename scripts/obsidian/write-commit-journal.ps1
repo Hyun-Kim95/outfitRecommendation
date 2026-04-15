@@ -18,6 +18,15 @@ catch {
 }
 $OutputEncoding = $utf8NoBom
 
+function Escape-YamlDoubleQuotedValue {
+    param([string]$Text)
+    if ($null -eq $Text) {
+        return ''
+    }
+    $clean = ($Text -replace "`r`n", ' ' -replace "`r", ' ' -replace "`n", ' ')
+    return (($clean -replace '\\', '\\\\') -replace '"', '\"')
+}
+
 function Ensure-Directory {
     param([string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) {
@@ -95,6 +104,7 @@ if (-not (Test-Path -LiteralPath $RepoRoot)) {
 $repoName = Split-Path -Path $RepoRoot -Leaf
 $ingestConfigPath = Join-Path $RepoRoot ".obsidian-ingest.json"
 $slug = $repoName
+$displayName = ""
 
 if (Test-Path -LiteralPath $ingestConfigPath) {
     $repoConfig = Get-Content -LiteralPath $ingestConfigPath -Encoding utf8 -Raw | ConvertFrom-Json
@@ -103,6 +113,9 @@ if (Test-Path -LiteralPath $ingestConfigPath) {
     }
     if ($repoConfig.vaultRoot) {
         $VaultRoot = [string]$repoConfig.vaultRoot
+    }
+    if ($repoConfig.displayName) {
+        $displayName = [string]$repoConfig.displayName
     }
 }
 
@@ -139,6 +152,10 @@ $frontmatter = New-Object System.Collections.Generic.List[string]
 $null = $frontmatter.Add('---')
 $null = $frontmatter.Add('type: commit-journal')
 $null = $frontmatter.Add("project: $slug")
+if (-not [string]::IsNullOrWhiteSpace($displayName)) {
+    $dq = Escape-YamlDoubleQuotedValue -Text $displayName
+    $null = $frontmatter.Add('display_name: "' + $dq + '"')
+}
 $null = $frontmatter.Add("source_repo: $safeSourceRepo")
 $null = $frontmatter.Add("repo_name: $repoName")
 $null = $frontmatter.Add("repo_root: $safeRepoRoot")
@@ -160,6 +177,9 @@ $null = $body.Add('')
 $null = $body.Add('## Metadata')
 $null = $body.Add('- Repo: ' + $repoName)
 $null = $body.Add('- Slug: ' + $slug)
+if (-not [string]::IsNullOrWhiteSpace($displayName)) {
+    $null = $body.Add('- Project name: ' + $displayName)
+}
 $null = $body.Add('- Commit: ' + $shaShort)
 $null = $body.Add('- Author: ' + $author)
 $null = $body.Add('- CommittedAt: ' + $committedAt)
