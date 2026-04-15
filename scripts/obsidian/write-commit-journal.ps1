@@ -6,6 +6,18 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+# Git log metadata is UTF-8. Windows PowerShell 5.1 decodes native command stdout using
+# [Console]::OutputEncoding (often system ANSI/OEM, e.g. CP949), which mojibakes non-ASCII subjects.
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+$script:utf8NoBom = $utf8NoBom
+try {
+    [Console]::OutputEncoding = $utf8NoBom
+}
+catch {
+    # Restricted host / non-interactive—ignore
+}
+$OutputEncoding = $utf8NoBom
+
 function Ensure-Directory {
     param([string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) {
@@ -13,22 +25,63 @@ function Ensure-Directory {
     }
 }
 
+function Read-GitStdoutFile {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return ''
+    }
+    return [System.IO.File]::ReadAllText($Path, $script:utf8NoBom).Trim()
+}
+
+# Capture git stdout as UTF-8 bytes (Git always uses UTF-8 for metadata). Using & git in WinPS 5.1 can decode
+# with the console code page and corrupt non-ASCII commit subjects.
 function Run-Git {
     param(
         [string]$RepoPath,
         [string[]]$GitArguments
     )
 
-    $output = & git -C $RepoPath @GitArguments
-    if ($LASTEXITCODE -ne 0) {
-        throw "git command failed: git -C $RepoPath $($GitArguments -join ' ')"
-    }
+    $tmpOut = Join-Path ([System.IO.Path]::GetTempPath()) ('git-journal-' + [System.Guid]::NewGuid().ToString('n') + '.stdout')
+    $tmpErr = Join-Path ([System.IO.Path]::GetTempPath()) ('git-journal-' + [System.Guid]::NewGuid().ToString('n') + '.stderr')
+    try {
+        $allArgs = @('-C', $RepoPath) + $GitArguments
+        $proc = Start-Process -FilePath 'git' -ArgumentList $allArgs -Wait -NoNewWindow -PassThru `
+            -RedirectStandardOutput $tmpOut -RedirectStandardError $tmpErr
+        if ($proc.ExitCode -ne 0) {
+            $stderr = Read-GitStdoutFile -Path $tmpErr
+            throw "git command failed (exit $($proc.ExitCode)): git -C $RepoPath $($GitArguments -join ' ') — $stderr"
+        }
 
-    if ($null -eq $output) {
-        return ""
+        return (Read-GitStdoutFile -Path $tmpOut)
     }
+    finally {
+        Remove-Item -LiteralPath $tmpOut -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $tmpErr -Force -ErrorAction SilentlyContinue
+    }
+}
 
-    return ($output -join "`n").Trim()
+function Try-Git {
+    param(
+        [string]$RepoPath,
+        [string[]]$GitArguments
+    )
+
+    $tmpOut = Join-Path ([System.IO.Path]::GetTempPath()) ('git-journal-' + [System.Guid]::NewGuid().ToString('n') + '.stdout')
+    $tmpErr = Join-Path ([System.IO.Path]::GetTempPath()) ('git-journal-' + [System.Guid]::NewGuid().ToString('n') + '.stderr')
+    try {
+        $allArgs = @('-C', $RepoPath) + $GitArguments
+        $proc = Start-Process -FilePath 'git' -ArgumentList $allArgs -Wait -NoNewWindow -PassThru `
+            -RedirectStandardOutput $tmpOut -RedirectStandardError $tmpErr
+        if ($proc.ExitCode -ne 0) {
+            return $null
+        }
+
+        return (Read-GitStdoutFile -Path $tmpOut)
+    }
+    finally {
+        Remove-Item -LiteralPath $tmpOut -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $tmpErr -Force -ErrorAction SilentlyContinue
+    }
 }
 
 if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
@@ -44,7 +97,7 @@ $ingestConfigPath = Join-Path $RepoRoot ".obsidian-ingest.json"
 $slug = $repoName
 
 if (Test-Path -LiteralPath $ingestConfigPath) {
-    $repoConfig = Get-Content -LiteralPath $ingestConfigPath -Raw | ConvertFrom-Json
+    $repoConfig = Get-Content -LiteralPath $ingestConfigPath -Encoding utf8 -Raw | ConvertFrom-Json
     if ($repoConfig.slug) {
         $slug = [string]$repoConfig.slug
     }
@@ -54,9 +107,9 @@ if (Test-Path -LiteralPath $ingestConfigPath) {
 }
 
 $sourceRepo = $repoName
-$remoteOrigin = & git -C $RepoRoot config --get remote.origin.url 2>$null
-if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($remoteOrigin)) {
-    $sourceRepo = ($remoteOrigin -join "`n").Trim()
+$remoteOrigin = Try-Git -RepoPath $RepoRoot -GitArguments @('config', '--get', 'remote.origin.url')
+if (-not [string]::IsNullOrWhiteSpace($remoteOrigin)) {
+    $sourceRepo = $remoteOrigin
 }
 
 $shaFull = Run-Git -RepoPath $RepoRoot -GitArguments @("rev-parse", "HEAD")
@@ -128,6 +181,8 @@ $null = $body.Add('- [[' + $slug + '/docs/_project-doc-index]]')
 $null = $body.Add('- [[' + $slug + '/docs/obsidian/dashboards/commit-journal-overview|Commit journal (Dataview)]]')
 
 $content = ($frontmatter + $body) -join "`r`n"
-Set-Content -LiteralPath $notePath -Value $content -Encoding UTF8
+# UTF-8 with BOM: Obsidian / some Windows tools detect encoding reliably (WinPS 5.1 Set-Content UTF8 = BOM).
+$utf8Bom = [System.Text.UTF8Encoding]::new($true)
+[System.IO.File]::WriteAllText($notePath, $content, $utf8Bom)
 
 Write-Host "Commit journal written: $notePath"
