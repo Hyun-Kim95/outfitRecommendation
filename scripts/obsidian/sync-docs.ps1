@@ -205,8 +205,9 @@ function Get-AutoRepositoryEntry {
         if ($repoConfig.docsPaths -and $repoConfig.docsPaths.Count -gt 0) {
             $docsPaths = @($repoConfig.docsPaths)
         }
-        if ($repoConfig.displayName) {
-            $displayName = [string]$repoConfig.displayName
+        $dnProp = $repoConfig.PSObject.Properties['displayName']
+        if ($null -ne $dnProp -and -not [string]::IsNullOrWhiteSpace([string]$dnProp.Value)) {
+            $displayName = [string]$dnProp.Value
         }
     }
 
@@ -246,8 +247,9 @@ foreach ($repo in $repositories) {
     $slug = [string]$repo.slug
     $docsPaths = Resolve-DocsPaths -DocsPaths $repo.docsPaths
     $displayName = ""
-    if ($null -ne $repo.displayName -and -not [string]::IsNullOrWhiteSpace([string]$repo.displayName)) {
-        $displayName = [string]$repo.displayName
+    $repoDn = $repo.PSObject.Properties['displayName']
+    if ($null -ne $repoDn -and -not [string]::IsNullOrWhiteSpace([string]$repoDn.Value)) {
+        $displayName = [string]$repoDn.Value
     }
 
     if (-not (Test-Path -LiteralPath $repoPath)) {

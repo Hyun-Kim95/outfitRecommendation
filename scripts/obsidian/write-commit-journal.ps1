@@ -114,8 +114,9 @@ if (Test-Path -LiteralPath $ingestConfigPath) {
     if ($repoConfig.vaultRoot) {
         $VaultRoot = [string]$repoConfig.vaultRoot
     }
-    if ($repoConfig.displayName) {
-        $displayName = [string]$repoConfig.displayName
+    $dnProp = $repoConfig.PSObject.Properties['displayName']
+    if ($null -ne $dnProp -and -not [string]::IsNullOrWhiteSpace([string]$dnProp.Value)) {
+        $displayName = [string]$dnProp.Value
     }
 }
 

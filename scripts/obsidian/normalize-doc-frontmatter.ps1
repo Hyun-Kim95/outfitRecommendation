@@ -24,8 +24,9 @@ if (Test-Path -LiteralPath $ingestPath) {
         if ($ingest.slug) {
             $slug = [string]$ingest.slug
         }
-        if ($ingest.displayName) {
-            $displayName = [string]$ingest.displayName
+        $dnProp = $ingest.PSObject.Properties['displayName']
+        if ($null -ne $dnProp -and -not [string]::IsNullOrWhiteSpace([string]$dnProp.Value)) {
+            $displayName = [string]$dnProp.Value
         }
     } catch {
         # keep folder slug
