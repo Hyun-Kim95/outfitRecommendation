@@ -18,7 +18,9 @@
 
 볼트 경로·슬러그는 레포 루트의 `.obsidian-ingest.json`으로 맞춘다. 이 파일은 **저장하지 않아도 되며**(`.gitignore`에 포함), `sync-docs.ps1` 실행 시 Git 루트 폴더명 기준으로 **없으면 자동 생성**되고, `slug`가 폴더명과 다르면 **폴더명에 맞게 보정**된다. 수동 예시는 `docs/obsidian/obsidian-ingest.example.json`을 참고한다.
 
-**`displayName`(선택):** 여러 레포를 한 볼트에 두면 `_project-doc-index` 제목·Dataview `name` 컬럼이 모두 `slug`로만 보여 헷갈릴 수 있다. 짧은 한글/영문 표시 이름을 넣으면 `_project-doc-index`의 H1·프론트매터 `display_name`, 커밋 저널·`normalize-doc-frontmatter`가 만드는 lane 문서에도 같은 필드가 들어가 대시보드에서 `default(display_name, project)`로 구분하기 쉽다.
+**`displayName`(선택):** 볼트 허브 노트의 H1·`display_name`·Dataview `name` 컬럼에 쓴다.
+
+**`hubFileStem`(선택):** 허브 `.md` **파일명(확장자 제외)**을 ASCII로 고정할 때. 없으면 `displayName`을 파일명에 쓸 수 있게 살균하고, 그것도 없으면 `<slug>-docs-hub`가 된다. `sync-docs`는 예전 고정명 `_project-doc-index.md`가 남아 있으면(새 스템과 다를 때) 삭제한다. 위키링크·저널·`normalize-doc-frontmatter`는 모두 `Resolve-HubIndexStem.ps1`의 `Get-HubIndexStem` 규칙과 동일해야 한다.
 
 ## 문서를 옵시디언 노트 형태로 (frontmatter + Vault 링크)
 
@@ -39,4 +41,4 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\obsidian\normaliz
 
 ## Backlink Tips
 - 문서 끝에 `Related Project`, `Related Journals` 섹션을 두고 위키링크를 넣는다.
-- 프로젝트 중심 허브는 `[[<project>/docs/_project-doc-index]]`를 기준으로 연결한다.
+- 프로젝트 허브는 `[[<project>/docs/<stem>]]` 형태로 연결한다(`<stem>`은 위 `hubFileStem` / `displayName` / `<slug>-docs-hub` 규칙).

@@ -11,12 +11,15 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "Resolve-HubIndexStem.ps1")
+
 if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
     $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 }
 
 $slug = Split-Path -Path $RepoRoot -Leaf
 $displayName = ""
+$hubFileStem = ""
 $ingestPath = Join-Path $RepoRoot ".obsidian-ingest.json"
 if (Test-Path -LiteralPath $ingestPath) {
     try {
@@ -28,10 +31,16 @@ if (Test-Path -LiteralPath $ingestPath) {
         if ($null -ne $dnProp -and -not [string]::IsNullOrWhiteSpace([string]$dnProp.Value)) {
             $displayName = [string]$dnProp.Value
         }
+        $hfProp = $ingest.PSObject.Properties['hubFileStem']
+        if ($null -ne $hfProp -and -not [string]::IsNullOrWhiteSpace([string]$hfProp.Value)) {
+            $hubFileStem = [string]$hfProp.Value
+        }
     } catch {
         # keep folder slug
     }
 }
+
+$hubStem = Get-HubIndexStem -Slug $slug -DisplayName $displayName -HubFileStem $hubFileStem
 
 function Escape-YamlDoubleQuotedValue {
     param([string]$Text)
@@ -94,7 +103,7 @@ foreach ($lane in $lanes) {
 
 ## Vault
 
-- [[$slug/docs/_project-doc-index|Hub]]
+- [[$slug/docs/$hubStem|Hub]]
 - [[$slug/docs/obsidian/dashboards/projects-overview|Dashboards]]
 - [[$slug/docs/obsidian/dashboards/commit-journal-overview|Commit journals (Dataview)]]
 "@

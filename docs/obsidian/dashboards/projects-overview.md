@@ -4,7 +4,7 @@
 TABLE default(display_name, project) AS name, project AS slug, source_repo, updated_at, file.link AS entry
 FROM ""
 WHERE type = "project-doc"
-AND file.name = "_project-doc-index"
+AND hub
 SORT updated_at DESC
 ```
 
@@ -17,7 +17,7 @@ WHERE contains(file.path, "/docs/")
 AND !contains(file.path, "/templates/")
 AND !contains(file.path, "/dashboards/")
 AND !contains(file.name, "-template")
-AND file.name != "_project-doc-index"
+AND !hub
 SORT file.mtime DESC
 LIMIT 30
 ```

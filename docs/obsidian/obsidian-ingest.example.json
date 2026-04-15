@@ -1,6 +1,7 @@
 {
   "slug": "your-repo-folder-name",
   "displayName": "Human-readable project title (optional)",
+  "hubFileStem": "ascii-hub-filename-without-md-optional",
   "vaultRoot": "D:\\Obsidian\\projects",
   "docsPaths": ["docs"]
 }

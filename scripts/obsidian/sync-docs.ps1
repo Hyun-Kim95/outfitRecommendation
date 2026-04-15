@@ -6,6 +6,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "Resolve-HubIndexStem.ps1")
+
 function Ensure-Directory {
     param([string]$Path)
     if (-not (Test-Path -LiteralPath $Path)) {
@@ -27,12 +29,14 @@ function Write-ProjectDocIndex {
         [string]$TargetDocsRoot,
         [string]$Slug,
         [string]$RepoPath,
-        [string]$DisplayName = ""
+        [string]$DisplayName = "",
+        [string]$HubFileStem = ""
     )
 
     $updatedAt = (Get-Date).ToString("s")
     $safeRepoPath = $RepoPath.Replace("\", "\\")
-    $indexPath = Join-Path $TargetDocsRoot "_project-doc-index.md"
+    $hubStem = Get-HubIndexStem -Slug $Slug -DisplayName $DisplayName -HubFileStem $HubFileStem
+    $indexPath = Join-Path $TargetDocsRoot ($hubStem + ".md")
     $readmePath = Join-Path $TargetDocsRoot "README.md"
     $hubTitle = if (-not [string]::IsNullOrWhiteSpace($DisplayName)) { $DisplayName } else { $Slug }
 
@@ -52,6 +56,7 @@ function Write-ProjectDocIndex {
     $content = New-Object System.Collections.Generic.List[string]
     $null = $content.Add('---')
     $null = $content.Add('type: project-doc')
+    $null = $content.Add('hub: true')
     $null = $content.Add("project: $Slug")
     if (-not [string]::IsNullOrWhiteSpace($DisplayName)) {
         $dq = Escape-YamlDoubleQuotedValue -Text $DisplayName
@@ -97,6 +102,11 @@ function Write-ProjectDocIndex {
     }
 
     Set-Content -LiteralPath $indexPath -Value ($content -join "`r`n") -Encoding UTF8
+
+    $legacyHub = Join-Path $TargetDocsRoot "_project-doc-index.md"
+    if ($hubStem -ne '_project-doc-index' -and (Test-Path -LiteralPath $legacyHub)) {
+        Remove-Item -LiteralPath $legacyHub -Force
+    }
 }
 
 function Resolve-DocsPaths {
@@ -193,6 +203,7 @@ function Get-AutoRepositoryEntry {
     $docsPaths = @("docs")
 
     $displayName = ""
+    $hubFileStem = ""
     $ingestConfigPath = Join-Path $repoPath ".obsidian-ingest.json"
     if (Test-Path -LiteralPath $ingestConfigPath) {
         $repoConfig = Get-Content -LiteralPath $ingestConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -209,6 +220,10 @@ function Get-AutoRepositoryEntry {
         if ($null -ne $dnProp -and -not [string]::IsNullOrWhiteSpace([string]$dnProp.Value)) {
             $displayName = [string]$dnProp.Value
         }
+        $hfProp = $repoConfig.PSObject.Properties['hubFileStem']
+        if ($null -ne $hfProp -and -not [string]::IsNullOrWhiteSpace([string]$hfProp.Value)) {
+            $hubFileStem = [string]$hfProp.Value
+        }
     }
 
     return @([pscustomobject]@{
@@ -216,6 +231,7 @@ function Get-AutoRepositoryEntry {
         slug         = $slug
         docsPaths    = $docsPaths
         displayName  = $displayName
+        hubFileStem  = $hubFileStem
     })
 }
 
@@ -250,6 +266,11 @@ foreach ($repo in $repositories) {
     $repoDn = $repo.PSObject.Properties['displayName']
     if ($null -ne $repoDn -and -not [string]::IsNullOrWhiteSpace([string]$repoDn.Value)) {
         $displayName = [string]$repoDn.Value
+    }
+    $hubFileStem = ""
+    $hfRepo = $repo.PSObject.Properties['hubFileStem']
+    if ($null -ne $hfRepo -and -not [string]::IsNullOrWhiteSpace([string]$hfRepo.Value)) {
+        $hubFileStem = [string]$hfRepo.Value
     }
 
     if (-not (Test-Path -LiteralPath $repoPath)) {
@@ -298,7 +319,7 @@ foreach ($repo in $repositories) {
         Write-Host "Synced: $sourcePath -> $targetPath"
     }
 
-    Write-ProjectDocIndex -TargetDocsRoot $targetDocsRoot -Slug $slug -RepoPath $repoPath -DisplayName $displayName
+    Write-ProjectDocIndex -TargetDocsRoot $targetDocsRoot -Slug $slug -RepoPath $repoPath -DisplayName $displayName -HubFileStem $hubFileStem
     Write-Host "Indexed: $targetDocsRoot"
 }
 

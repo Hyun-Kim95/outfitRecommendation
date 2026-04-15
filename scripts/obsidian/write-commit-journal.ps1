@@ -6,6 +6,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "Resolve-HubIndexStem.ps1")
+
 # Git log metadata is UTF-8. Windows PowerShell 5.1 decodes native command stdout using
 # [Console]::OutputEncoding (often system ANSI/OEM, e.g. CP949), which mojibakes non-ASCII subjects.
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
@@ -105,6 +107,7 @@ $repoName = Split-Path -Path $RepoRoot -Leaf
 $ingestConfigPath = Join-Path $RepoRoot ".obsidian-ingest.json"
 $slug = $repoName
 $displayName = ""
+$hubFileStem = ""
 
 if (Test-Path -LiteralPath $ingestConfigPath) {
     $repoConfig = Get-Content -LiteralPath $ingestConfigPath -Encoding utf8 -Raw | ConvertFrom-Json
@@ -118,7 +121,13 @@ if (Test-Path -LiteralPath $ingestConfigPath) {
     if ($null -ne $dnProp -and -not [string]::IsNullOrWhiteSpace([string]$dnProp.Value)) {
         $displayName = [string]$dnProp.Value
     }
+    $hfProp = $repoConfig.PSObject.Properties['hubFileStem']
+    if ($null -ne $hfProp -and -not [string]::IsNullOrWhiteSpace([string]$hfProp.Value)) {
+        $hubFileStem = [string]$hfProp.Value
+    }
 }
+
+$hubStem = Get-HubIndexStem -Slug $slug -DisplayName $displayName -HubFileStem $hubFileStem
 
 $sourceRepo = $repoName
 $remoteOrigin = Try-Git -RepoPath $RepoRoot -GitArguments @('config', '--get', 'remote.origin.url')
@@ -167,7 +176,7 @@ $null = $frontmatter.Add("author: $author")
 $null = $frontmatter.Add("committed_at: $committedAt")
 $null = $frontmatter.Add('tags: [tech, commit, journal]')
 $null = $frontmatter.Add('links:')
-$null = $frontmatter.Add('    - ''[[' + $slug + '/docs/_project-doc-index]]''')
+$null = $frontmatter.Add('    - ''[[' + $slug + '/docs/' + $hubStem + ']]''')
 $null = $frontmatter.Add('    - ''[[' + $slug + '/docs/obsidian/dashboards/commit-journal-overview]]''')
 $null = $frontmatter.Add('---')
 $null = $frontmatter.Add('')
@@ -198,7 +207,7 @@ if ($changedFiles.Count -eq 0) {
 
 $null = $body.Add('')
 $null = $body.Add('## Related Links')
-$null = $body.Add('- [[' + $slug + '/docs/_project-doc-index]]')
+$null = $body.Add('- [[' + $slug + '/docs/' + $hubStem + ']]')
 $null = $body.Add('- [[' + $slug + '/docs/obsidian/dashboards/commit-journal-overview|Commit journal (Dataview)]]')
 
 $content = ($frontmatter + $body) -join "`r`n"

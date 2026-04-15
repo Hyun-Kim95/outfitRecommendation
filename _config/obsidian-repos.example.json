@@ -3,6 +3,7 @@
     {
       "slug": "my-cursor-template",
       "displayName": "My Cursor template (optional)",
+      "hubFileStem": "my-template-hub",
       "path": "d:\\cursor\\my-cursor-template",
       "docsPaths": ["docs"]
     },
