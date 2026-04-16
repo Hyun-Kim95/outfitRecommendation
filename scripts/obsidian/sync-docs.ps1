@@ -1,6 +1,8 @@
 param(
     [string]$ConfigPath = "",
-    [string]$VaultRoot = "D:\Obsidian\projects"
+    [string]$VaultRoot = "D:\Obsidian\projects",
+    [ValidateSet("safe", "mirror")]
+    [string]$SyncMode = "safe"
 )
 
 Set-StrictMode -Version Latest
@@ -121,6 +123,25 @@ function Resolve-DocsPaths {
     return $DocsPaths
 }
 
+function Resolve-SyncMode {
+    param(
+        [string]$Candidate,
+        [string]$Fallback = "safe"
+    )
+
+    $value = if ($null -eq $Candidate) { "" } else { $Candidate.Trim().ToLowerInvariant() }
+    if ($value -eq "safe" -or $value -eq "mirror") {
+        return $value
+    }
+
+    $fallbackValue = if ($null -eq $Fallback) { "safe" } else { $Fallback.Trim().ToLowerInvariant() }
+    if ($fallbackValue -eq "safe" -or $fallbackValue -eq "mirror") {
+        return $fallbackValue
+    }
+
+    return "safe"
+}
+
 function Resolve-GitRepoRoot {
     param([string]$FallbackPath)
 
@@ -139,13 +160,16 @@ function Resolve-GitRepoRoot {
 function Ensure-ObsidianIngestConfig {
     param(
         [string]$RepoPath,
-        [string]$DefaultVaultRoot = "D:\Obsidian\projects"
+        [string]$DefaultVaultRoot = "D:\Obsidian\projects",
+        [string]$DefaultSyncMode = "safe"
     )
 
     $ingestPath = Join-Path $RepoPath ".obsidian-ingest.json"
     $folderSlug = Split-Path -Path $RepoPath -Leaf
     $vaultRoot = $DefaultVaultRoot
     $docsPaths = @("docs")
+    $syncMode = Resolve-SyncMode -Candidate $DefaultSyncMode -Fallback "safe"
+    $lockSlug = $false
     $cfg = $null
     $hadReadableFile = $false
 
@@ -169,13 +193,21 @@ function Ensure-ObsidianIngestConfig {
         if ($cfg.docsPaths -and @($cfg.docsPaths).Count -gt 0) {
             $docsPaths = @($cfg.docsPaths | ForEach-Object { [string]$_ })
         }
+        $syncProp = $cfg.PSObject.Properties['syncMode']
+        if ($null -ne $syncProp -and -not [string]::IsNullOrWhiteSpace([string]$syncProp.Value)) {
+            $syncMode = Resolve-SyncMode -Candidate ([string]$syncProp.Value) -Fallback $syncMode
+        }
+        $lockProp = $cfg.PSObject.Properties['lockSlug']
+        if ($null -ne $lockProp -and $null -ne $lockProp.Value) {
+            $lockSlug = [bool]$lockProp.Value
+        }
     }
 
     $slug = $folderSlug
     $mustWrite = -not $hadReadableFile
     if ($hadReadableFile -and $null -ne $cfg) {
         $existingSlug = [string]$cfg.slug
-        if ($existingSlug -ne $folderSlug) {
+        if (-not $lockSlug -and $existingSlug -ne $folderSlug) {
             $mustWrite = $true
         }
     }
@@ -186,21 +218,24 @@ function Ensure-ObsidianIngestConfig {
 
     $out = [pscustomobject]@{
         slug       = $slug
+        lockSlug   = $lockSlug
         vaultRoot  = $vaultRoot
         docsPaths  = $docsPaths
+        syncMode   = $syncMode
     }
     $json = $out | ConvertTo-Json -Depth 6
     Set-Content -LiteralPath $ingestPath -Value $json -Encoding utf8
-    Write-Host "Wrote or repaired: $ingestPath (slug=$slug)"
+    Write-Host "Wrote or repaired: $ingestPath (slug=$slug, lockSlug=$lockSlug, syncMode=$syncMode)"
 }
 
 function Get-AutoRepositoryEntry {
     $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
     $repoPath = Resolve-GitRepoRoot -FallbackPath $projectRoot
-    Ensure-ObsidianIngestConfig -RepoPath $repoPath
+    Ensure-ObsidianIngestConfig -RepoPath $repoPath -DefaultSyncMode $script:SyncMode
 
     $slug = Split-Path -Path $repoPath -Leaf
     $docsPaths = @("docs")
+    $repoSyncMode = Resolve-SyncMode -Candidate $script:SyncMode -Fallback "safe"
 
     $displayName = ""
     $hubFileStem = ""
@@ -216,6 +251,10 @@ function Get-AutoRepositoryEntry {
         if ($repoConfig.docsPaths -and $repoConfig.docsPaths.Count -gt 0) {
             $docsPaths = @($repoConfig.docsPaths)
         }
+        $smProp = $repoConfig.PSObject.Properties['syncMode']
+        if ($null -ne $smProp -and -not [string]::IsNullOrWhiteSpace([string]$smProp.Value)) {
+            $repoSyncMode = Resolve-SyncMode -Candidate ([string]$smProp.Value) -Fallback $repoSyncMode
+        }
         $dnProp = $repoConfig.PSObject.Properties['displayName']
         if ($null -ne $dnProp -and -not [string]::IsNullOrWhiteSpace([string]$dnProp.Value)) {
             $displayName = [string]$dnProp.Value
@@ -230,6 +269,7 @@ function Get-AutoRepositoryEntry {
         path         = $repoPath
         slug         = $slug
         docsPaths    = $docsPaths
+        syncMode     = $repoSyncMode
         displayName  = $displayName
         hubFileStem  = $hubFileStem
     })
@@ -262,6 +302,7 @@ foreach ($repo in $repositories) {
     $repoPath = [string]$repo.path
     $slug = [string]$repo.slug
     $docsPaths = Resolve-DocsPaths -DocsPaths $repo.docsPaths
+    $repoSyncMode = Resolve-SyncMode -Candidate ([string]$repo.syncMode) -Fallback $SyncMode
     $displayName = ""
     $repoDn = $repo.PSObject.Properties['displayName']
     if ($null -ne $repoDn -and -not [string]::IsNullOrWhiteSpace([string]$repoDn.Value)) {
@@ -309,14 +350,21 @@ foreach ($repo in $repositories) {
 
         Ensure-Directory -Path $targetPath
 
-        # /MIR keeps destination in sync with source for the selected docs folder.
-        robocopy $sourcePath $targetPath /MIR /R:1 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
+        $robocopyOptions = @('/R:1', '/W:1', '/NFL', '/NDL', '/NJH', '/NJS', '/NP')
+        if ($repoSyncMode -eq 'mirror') {
+            # mirror: destination entries not present in source are deleted.
+            $robocopyOptions = @('/MIR') + $robocopyOptions
+        } else {
+            # safe: copy recursively without deleting destination-only files.
+            $robocopyOptions = @('/E') + $robocopyOptions
+        }
+        robocopy $sourcePath $targetPath @robocopyOptions | Out-Null
         $exitCode = $LASTEXITCODE
         if ($exitCode -ge 8) {
             throw "robocopy failed for '$sourcePath' -> '$targetPath' (exit code: $exitCode)"
         }
 
-        Write-Host "Synced: $sourcePath -> $targetPath"
+        Write-Host "Synced($repoSyncMode): $sourcePath -> $targetPath"
     }
 
     Write-ProjectDocIndex -TargetDocsRoot $targetDocsRoot -Slug $slug -RepoPath $repoPath -DisplayName $displayName -HubFileStem $hubFileStem

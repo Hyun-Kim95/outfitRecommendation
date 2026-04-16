@@ -2,12 +2,6 @@
 
 이 폴더는 요구사항 정리 문서를 저장한다.
 
-이 저장소에서의 기준 문서(루트 `docs/`가 아닌 여기에 둔다):
-
-- [`prd.md`](prd.md) — 제품 범위·정책 요약(PRD)
-- [`research.md`](research.md) — 사전 조사·가정
-- [`frontend-plan.md`](frontend-plan.md), [`backend-plan.md`](backend-plan.md) — 구현 착수 전후 프론트/백엔드 계획
-
 예시:
 - 기능 요구사항 초안
 - 화면 목록

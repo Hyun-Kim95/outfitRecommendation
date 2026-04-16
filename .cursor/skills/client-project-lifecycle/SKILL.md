@@ -3,6 +3,8 @@ name: client-project-lifecycle
 description: 고객사 요구 붙여넣기부터 PRD 승인, 이중 목업, 디자인 선택, 병렬 구현, 검증, 테스트·성능까지의 전체 납품 흐름을 단계별로 진행한다.
 ---
 
+> **레포 전제:** 이 스킬은 **고객사 신규 프로젝트를 처음부터 끝까지 납품**할 때의 표준 경로다. **이미 PRD·스펙이 있는 운영 중 개인/내부 제품**의 일상 작업에는 기본 적용 대상이 아니다. 그런 요청에는 `bugfix-flow`, `start-feature`, `plan-feature` 등을 우선한다.
+
 # client-project-lifecycle
 
 ## 목적
