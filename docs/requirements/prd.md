@@ -1,3 +1,11 @@
+﻿---
+type: doc
+project: outFitRecommendation
+doc_lane: requirements
+updated_at: 2026-04-08T12:23:46
+tags: [docs, vault-sync]
+---
+
 # Outfit 로깅·추천 앱 — PRD 요약
 
 ## 제품 한 줄
@@ -125,3 +133,9 @@ MVP에서는 **설명 가능한 규칙**만 사용하고, 모델 학습은 하�
 - 비슷한 날 **3건 이상** 조회 가능(데이터가 있을 때).
 - 추천 카드 **1~3개** 표시.
 - **푸시**: 알림 권한 UX + 로컬 리마인더 1종(또는 스케줄 가능한 훅)으로 “기본 푸시” 경로 검증.
+## Vault
+
+- [[outFitRecommendation/docs/outFitRecommendation-docs-hub|Hub]]
+- [[outFitRecommendation/docs/obsidian/dashboards/projects-overview|Dashboards]]
+- [[outFitRecommendation/docs/obsidian/dashboards/commit-journal-overview|Commit journals (Dataview)]]
+

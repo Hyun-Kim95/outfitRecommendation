@@ -1,3 +1,11 @@
+﻿---
+type: doc
+project: outFitRecommendation
+doc_lane: qa
+updated_at: 2026-04-15T14:20:07
+tags: [docs, vault-sync]
+---
+
 # Gate Checklist
 
 증거: [reports/test-report.md](../../reports/test-report.md), [reports/review.md](../../reports/review.md).  
@@ -35,3 +43,9 @@
 - 심각한 API 불일치
 - 파괴적인 마이그레이션 위험
 - 보안 민감 이슈
+## Vault
+
+- [[outFitRecommendation/docs/outFitRecommendation-docs-hub|Hub]]
+- [[outFitRecommendation/docs/obsidian/dashboards/projects-overview|Dashboards]]
+- [[outFitRecommendation/docs/obsidian/dashboards/commit-journal-overview|Commit journals (Dataview)]]
+

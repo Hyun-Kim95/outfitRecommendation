@@ -1,3 +1,11 @@
+﻿---
+type: doc
+project: outFitRecommendation
+doc_lane: qa
+updated_at: 2026-04-16T13:04:20
+tags: [docs, vault-sync]
+---
+
 # qa
 
 이 폴더는 QA 체크리스트와 검증 메모를 저장한다.
@@ -18,3 +26,9 @@
 - release-checklist.md
 - admin-table-qa.md
 - stage3-entry-checklist.md
+## Vault
+
+- [[outFitRecommendation/docs/outFitRecommendation-docs-hub|Hub]]
+- [[outFitRecommendation/docs/obsidian/dashboards/projects-overview|Dashboards]]
+- [[outFitRecommendation/docs/obsidian/dashboards/commit-journal-overview|Commit journals (Dataview)]]
+

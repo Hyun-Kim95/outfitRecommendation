@@ -1,3 +1,11 @@
+﻿---
+type: doc
+project: outFitRecommendation
+doc_lane: requirements
+updated_at: 2026-04-08T12:32:47
+tags: [docs, vault-sync]
+---
+
 # Backend plan — Supabase (착장 앱)
 
 ## 개요
@@ -145,3 +153,9 @@ PRD 8.2와 동일한 의미. MVP 컬럼: `user_id`, `date` (date), `region_name`
 ## 푸시 (MVP 하한)
 
 - 원격 푸시: Expo Push + EAS 크레덴셜 필요 → **MVP 코드 경로**: `expo-notifications`로 **로컬 알림** 스케줄(선택) 또는 설정 화면에서 “알림 권한만 요청” 수준. PRD P0 “기본 푸시”는 문서상 완료 조건이므로, **권한 요청 + 로컬 테스트 가능한 리마인더 1종**으로 게이트 충족.
+## Vault
+
+- [[outFitRecommendation/docs/outFitRecommendation-docs-hub|Hub]]
+- [[outFitRecommendation/docs/obsidian/dashboards/projects-overview|Dashboards]]
+- [[outFitRecommendation/docs/obsidian/dashboards/commit-journal-overview|Commit journals (Dataview)]]
+

@@ -1,3 +1,11 @@
+﻿---
+type: doc
+project: outFitRecommendation
+doc_lane: requirements
+updated_at: 2026-04-08T12:32:58
+tags: [docs, vault-sync]
+---
+
 # Outfit Recommendation MVP — Research Notes
 
 ## Scope
@@ -76,3 +84,9 @@
 | 상세·수정 | 착장·사용자 상세는 기존 테이블 **SELECT 정책**으로 충분. 사용자 프로필 편집은 관리자가 **다른 사용자** 행에 대해서만 UPDATE 정책으로 허용. |
 
 *본 문서는 구현 전 기술 선택 메모이며, 최종 결정은 PRD·게이트 체크리스트와 함께 갱신한다.*
+## Vault
+
+- [[outFitRecommendation/docs/outFitRecommendation-docs-hub|Hub]]
+- [[outFitRecommendation/docs/obsidian/dashboards/projects-overview|Dashboards]]
+- [[outFitRecommendation/docs/obsidian/dashboards/commit-journal-overview|Commit journals (Dataview)]]
+

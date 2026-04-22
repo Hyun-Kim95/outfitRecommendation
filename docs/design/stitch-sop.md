@@ -1,3 +1,11 @@
+﻿---
+type: doc
+project: outFitRecommendation
+doc_lane: design
+updated_at: 2026-04-15T23:06:31
+tags: [docs, vault-sync]
+---
+
 # Stitch 운영 표준 호출 순서 (SOP)
 
 Cursor에 연결된 **Stitch MCP**(`user-stitch`)로 화면·디자인 시스템을 만들 때의 권장 호출 순서다.  
@@ -89,3 +97,9 @@ Stitch는 **화면·디자인 시스템의 근거**로 쓰고, 실제 코드베�
 - 전역 스타일·디자인 기준: `.cursor/rules/50-index-css-contract.mdc`
 - 기획 정리: `.cursor/skills/plan-feature/SKILL.md`
 - 디자인 일관성 에이전트: `.cursor/agents/design-system-agent.md`
+## Vault
+
+- [[outFitRecommendation/docs/outFitRecommendation-docs-hub|Hub]]
+- [[outFitRecommendation/docs/obsidian/dashboards/projects-overview|Dashboards]]
+- [[outFitRecommendation/docs/obsidian/dashboards/commit-journal-overview|Commit journals (Dataview)]]
+

@@ -1,3 +1,11 @@
+﻿---
+type: doc
+project: outFitRecommendation
+doc_lane: design
+updated_at: 2026-04-09T17:27:26
+tags: [docs, vault-sync]
+---
+
 # UI specification — MVP
 
 ## 디자인 원칙
@@ -107,3 +115,9 @@
 
 - **설정**: “운영진에게 문의” 진입 → 제목·내용·전송, 성공/실패 피드백
 - **비활성 계정**: “이용이 제한된 계정입니다” 류 안내 후 로그아웃
+## Vault
+
+- [[outFitRecommendation/docs/outFitRecommendation-docs-hub|Hub]]
+- [[outFitRecommendation/docs/obsidian/dashboards/projects-overview|Dashboards]]
+- [[outFitRecommendation/docs/obsidian/dashboards/commit-journal-overview|Commit journals (Dataview)]]
+

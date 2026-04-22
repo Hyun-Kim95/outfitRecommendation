@@ -1,6 +1,6 @@
----
+﻿---
 type: doc
-project: lifeNote
+project: outFitRecommendation
 doc_lane: requirements
 updated_at: 2026-04-15T01:04:56
 tags: [docs, vault-sync]
@@ -13,9 +13,7 @@ tags: [docs, vault-sync]
 - C: 커밋마다 저널 노트를 자동 생성
 - 활용: 템플릿/Dataview/데일리 로그/백링크 기반 지식 탐색
 
-기본 볼트 경로는 `D:\Obsidian\projects` 이다. **(예시일 뿐이며,** 실제 볼트는 팀·개인 환경에 맞게 두고, 레포 루트의 `.obsidian-ingest.json`으로 맞춘다.)
-
-**Cursor 훅:** 레포의 `.cursor/hooks.json`은 **로컬 Cursor + Windows PowerShell** 전제이며, CI에서는 돌지 않는다.
+기본 볼트 경로는 `D:\Obsidian\projects` 이다.
 
 ## 1) 필수 구성
 
@@ -95,7 +93,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\obsidian\install-
 
 ## 5) Cursor 에이전트 편집 시 자동 동기화
 
-`afterFileEdit` 훅이 `docs` 경로 또는 `.md` 변경을 감지하면 `sync-docs.ps1`를 호출한다.
+Cursor의 `afterFileEdit` 훅(파일 쓰기 이벤트, matcher: `Write|TabWrite`)이 `docs` 경로 또는 `.md` 변경을 감지하면 `sync-docs.ps1`를 호출한다.
 
 운영 포인트:
 - 훅은 fail-open으로 동작해서 개발 흐름을 막지 않는다.
@@ -144,13 +142,27 @@ Dataview가 켜져 있으면 `type/project/updated_at` 기준으로 자동 집�
 
 ## 6.5) 요구·QA·디자인 등 일반 문서에 공통 frontmatter 넣기
 
-`docs/obsidian`을 제외한 `docs/requirements`, `docs/qa`, `docs/design`, `docs/decisions`, `docs/changelog`의 마크다운에, **이미 `---`로 시작하지 않는 파일만** 대상으로 YAML frontmatter(`type: doc`, `project`, `doc_lane`, `updated_at`, `tags`)와 하단 `## Vault` 위키링크(허브·프로젝트 대시보드·**커밋 저널은 `commit-journal-overview`**)를 추가한다. `[[slug/journal]]` 형태는 쓰지 않는다(옵시디언이 `journal.md` 유령 노트를 만들기 쉬움).
+`docs/obsidian`을 제외한 `docs/requirements`, `docs/qa`, `docs/design`, `docs/decisions`, `docs/changelog`의 마크다운을 점검해 YAML frontmatter(`type: doc`, `project`, `doc_lane`, `updated_at`, `tags`)와 하단 `## Vault` 위키링크(허브·프로젝트 대시보드·**커밋 저널은 `commit-journal-overview`**) 정합성을 관리한다. `[[slug/journal]]` 형태는 쓰지 않는다(옵시디언이 `journal.md` 유령 노트를 만들기 쉬움).
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\obsidian\normalize-doc-frontmatter.ps1"
 ```
 
+점검 전용(파일 미변경):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\obsidian\normalize-doc-frontmatter.ps1" -CheckOnly
+```
+
+기존 PRD/문서의 `project` 또는 Vault 링크 불일치 자동 보정:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\obsidian\normalize-doc-frontmatter.ps1" -FixMismatch
+```
+
 `project` 슬러그는 `.obsidian-ingest.json`의 `slug`가 있으면 그 값을, 없으면 Git 루트 폴더명을 쓴다. `lockSlug: true`면 자동 보정 중에도 기존 `slug`를 유지한다. **선택 필드 `displayName`·`hubFileStem`**은 허브 파일명·제목·`display_name`·커밋 저널·lane 문서의 Vault 링크에 반영된다(규칙: `scripts/obsidian/Resolve-HubIndexStem.ps1`). `syncMode`(`safe|mirror`)로 레포별 동기화 정책을 고정할 수 있다. Vault 링크 표시 텍스트는 Windows 콘솔 인코딩 호환을 위해 ASCII로 둔다.
+
+운영 권장: 타 프로젝트 문서를 이관한 직후 `-CheckOnly`를 1회 실행하고, 불일치가 나오면 `-FixMismatch`를 실행해 그래프 연결을 프로젝트 슬러그 기준으로 정렬한다.
 
 ## 7) 문제 발생 시 점검 순서
 
@@ -194,6 +206,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\obsidian\normaliz
 - 초기화 버튼은 현재 필터/검색 입력을 기본값으로 복원하고, 복원 결과가 즉시 반영되어야 한다.
 ## Vault
 
-- [[lifeNote/docs/lifeNote-docs-hub|Hub]]
-- [[lifeNote/docs/obsidian/dashboards/projects-overview|Dashboards]]
-- [[lifeNote/docs/obsidian/dashboards/commit-journal-overview|Commit journals (Dataview)]]
+- [[outFitRecommendation/docs/outFitRecommendation-docs-hub|Hub]]
+- [[outFitRecommendation/docs/obsidian/dashboards/projects-overview|Dashboards]]
+- [[outFitRecommendation/docs/obsidian/dashboards/commit-journal-overview|Commit journals (Dataview)]]
+

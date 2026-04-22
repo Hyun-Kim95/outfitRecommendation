@@ -1,3 +1,11 @@
+﻿---
+type: doc
+project: outFitRecommendation
+doc_lane: requirements
+updated_at: 2026-04-08T12:24:05
+tags: [docs, vault-sync]
+---
+
 # Frontend plan — 착장 기록·추천 (Expo)
 
 ## 스택
@@ -92,3 +100,9 @@ mobile/app/
 
 - **문의**: 설정(또는 동급 진입점)에서 제목·본문 제출 → `support_tickets` insert
 - **비활성 계정**: `profiles.account_disabled === true`이면 프로필 로드 직후 Alert + `signOut` + 로그인 화면
+## Vault
+
+- [[outFitRecommendation/docs/outFitRecommendation-docs-hub|Hub]]
+- [[outFitRecommendation/docs/obsidian/dashboards/projects-overview|Dashboards]]
+- [[outFitRecommendation/docs/obsidian/dashboards/commit-journal-overview|Commit journals (Dataview)]]
+

@@ -1,3 +1,11 @@
+﻿---
+type: doc
+project: outFitRecommendation
+doc_lane: decisions
+updated_at: 2026-04-15T23:06:31
+tags: [docs, vault-sync]
+---
+
 # decisions
 
 이 폴더는 중요한 설계/정책 결정 사항을 기록한다.
@@ -12,3 +20,9 @@
 권장 파일명 예시:
 - 2026-04-11-web-vs-app-list-policy.md
 - 2026-04-11-dark-mode-token-policy.md
+## Vault
+
+- [[outFitRecommendation/docs/outFitRecommendation-docs-hub|Hub]]
+- [[outFitRecommendation/docs/obsidian/dashboards/projects-overview|Dashboards]]
+- [[outFitRecommendation/docs/obsidian/dashboards/commit-journal-overview|Commit journals (Dataview)]]
+
