@@ -1,10 +1,10 @@
 {
   "repositories": [
     {
-      "slug": "my-cursor-template",
+      "slug": "outFitRecommendation",
       "displayName": "My Cursor template (optional)",
       "hubFileStem": "my-template-hub",
-      "path": "d:\\cursor\\my-cursor-template",
+      "path": "d:\\cursor\\outFitRecommendation",
       "docsPaths": ["docs"]
     },
     {

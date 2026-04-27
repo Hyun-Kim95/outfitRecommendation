@@ -177,14 +177,6 @@ function Ensure-VaultBlock {
     return $rebuilt
 }
 
-function Normalize-TextForCompare {
-    param([string]$Text)
-    if ($null -eq $Text) {
-        return ''
-    }
-    return (($Text -replace "`r`n", "`n" -replace "`r", "`n").Trim())
-}
-
 $defaultLanes = @("requirements", "qa", "design", "decisions", "changelog")
 $lanes = $defaultLanes
 if ($LaneFilter.Count -gt 0) {
@@ -248,9 +240,8 @@ foreach ($lane in $lanes) {
                 $needsVaultFix = $true
             } else {
                 $vaultContent = $raw.Substring($vaultRange.Start, $vaultRange.End - $vaultRange.Start).Trim()
-                $expectedVaultNormalized = Normalize-TextForCompare -Text $expectedVault
-                $vaultContentNormalized = Normalize-TextForCompare -Text $vaultContent
-                if ($vaultContentNormalized -ne $expectedVaultNormalized) {
+                $slugEscaped = [regex]::Escape($slug)
+                if (-not [regex]::IsMatch($vaultContent, "\[\[$slugEscaped/docs/")) {
                     $needsVaultFix = $true
                 }
             }

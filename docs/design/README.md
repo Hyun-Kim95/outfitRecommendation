@@ -2,7 +2,7 @@
 type: doc
 project: outFitRecommendation
 doc_lane: design
-updated_at: 2026-04-15T23:06:31
+updated_at: 2026-04-21T21:51:12
 tags: [docs, vault-sync]
 ---
 
